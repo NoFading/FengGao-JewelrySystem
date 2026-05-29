@@ -1,0 +1,46 @@
+[
+    {
+        "code": "wyy03",
+        "name": "足金手镯",
+        "category": "手镯",
+        "weight": "25.56",
+        "tag_price": "",
+        "wage": "100.0",
+        "status": "在售",
+        "sold_date": "2026-05-29",
+        "sold_price": "28000",
+        "price": "0",
+        "fee": "100.0"
+    },
+    {
+        "code": "wyy04",
+        "name": "足银手镯",
+        "category": "手镯",
+        "weight": "20.36",
+        "tag_price": "1000.0",
+        "wage": "",
+        "status": "在售",
+        "price": "1000.0",
+        "fee": "0"
+    },
+    {
+        "code": "wyy01",
+        "name": "足金吊坠",
+        "category": "吊坠",
+        "weight": "1.6",
+        "status": "已售出",
+        "price": "1600.0",
+        "fee": "0.0",
+        "sold_date": "2026-05-29",
+        "sold_price": "1000"
+    },
+    {
+        "code": "wyy02",
+        "name": "珍珠项链",
+        "category": "项链",
+        "weight": "0",
+        "status": "在售",
+        "price": "600.0",
+        "fee": "0"
+    }
+]

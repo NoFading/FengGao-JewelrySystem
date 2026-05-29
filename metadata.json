@@ -1,0 +1,6 @@
+{
+  "name": "Township Jewelry Assistant",
+  "description": "A mobile-friendly assistant for township jewelry stores to manage inventory, sales, pricing, and customer records.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
