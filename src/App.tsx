@@ -102,8 +102,8 @@ export default function App() {
 
   // Pagination Settings
   const [paginations, setPaginations] = useState({
-    inventory: { current: 1, size: 5 },
-    sold: { current: 1, size: 5 },
+    inventory: { current: 1, size: 10 },
+    sold: { current: 1, size: 10 },
     today: { current: 1, size: 10 }
   });
 
@@ -1110,19 +1110,19 @@ export default function App() {
               onClick={() => setActiveViewTab('inventory')}
               className={`py-2 rounded-lg transition-all ${activeViewTab === 'inventory' ? 'bg-white text-emerald-600 border-b-2 border-emerald-500 shadow-sm' : 'hover:bg-white/50 text-slate-500'}`}
             >
-              🟢 店内在售
+              🟢 在售 ({activeInventory.length})
             </button>
             <button 
               onClick={() => setActiveViewTab('sold')}
               className={`py-2 rounded-lg transition-all ${activeViewTab === 'sold' ? 'bg-white text-amber-600 border-b-2 border-amber-500 shadow-sm' : 'hover:bg-white/50 text-slate-500'}`}
             >
-              📜 已售账本
+              📜 已售 ({soldInventory.length})
             </button>
             <button 
               onClick={() => { setActiveViewTab('stocktakeHistory'); loadStocktakeHistory(); }}
               className={`py-2 rounded-lg transition-all ${activeViewTab === 'stocktakeHistory' ? 'bg-white text-indigo-600 border-b-2 border-indigo-500 shadow-sm' : 'hover:bg-white/50 text-slate-500'}`}
             >
-              📋 盘点报告
+              📋 报告
             </button>
           </div>
 
@@ -1146,7 +1146,7 @@ export default function App() {
               </div>
 
               <div className="overflow-x-auto border border-slate-100 rounded-xl">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full min-w-[650px] text-left text-xs border-collapse whitespace-nowrap">
                   <thead>
                     <tr className="bg-slate-50 text-slate-600 border-b border-slate-100">
                       <th className="p-2.5 font-bold">条码</th>
@@ -1176,7 +1176,7 @@ export default function App() {
                             </span>
                           </td>
                           <td className="p-2.5 text-slate-500">{item.weight}g</td>
-                          <td className="p-2.5 text-slate-750 font-bold">{item.price ? `¥${item.price}` : '-'}</td>
+                          <td className="p-2.5 text-slate-755 font-bold">{item.price ? `¥${item.price}` : '-'}</td>
                           <td className="p-2.5 text-slate-400">{item.fee ? `¥${item.fee}` : '-'}</td>
                           <td className="p-2.5 text-emerald-500 font-bold">在售</td>
                         </tr>
@@ -1187,25 +1187,57 @@ export default function App() {
               </div>
 
               {/* Pagination for Inventory */}
-              {inventoryPaged.totalCount > paginations.inventory.size && (
-                <div className="flex items-center justify-between text-xs text-slate-500" id="pagerInventory">
-                  <span>共 {inventoryPaged.totalCount} 条</span>
-                  <div className="flex items-center gap-1.5">
-                    <button 
-                      onClick={() => changePage('inventory', 'prev')} 
-                      disabled={inventoryPaged.current === 1}
-                      className="p-1 px-2 border border-slate-200 rounded-lg bg-slate-50 disabled:opacity-40 transition-all font-bold active:bg-slate-100"
-                    >
-                      ◀
-                    </button>
-                    <span className="font-bold text-slate-700">{inventoryPaged.current} / {inventoryPaged.totalPages}</span>
-                    <button 
-                      onClick={() => changePage('inventory', 'next')} 
-                      disabled={inventoryPaged.current === inventoryPaged.totalPages}
-                      className="p-1 px-2 border border-slate-200 rounded-lg bg-slate-50 disabled:opacity-40 transition-all font-bold active:bg-slate-100"
-                    >
-                      ▶
-                    </button>
+              {inventoryPaged.totalCount > 0 && (
+                <div className="flex flex-col gap-2.5 text-xs text-slate-500 select-none border-t border-slate-100 pt-3" id="pagerInventory">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-medium text-slate-600">在售共 {inventoryPaged.totalCount} 件商品</span>
+                    
+                    {/* Size Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-400">每页:</span>
+                      <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                        {[10, 20, 50].map((size) => (
+                          <button
+                            key={size}
+                            onClick={() => {
+                              setPaginations(prev => ({
+                                ...prev,
+                                inventory: { ...prev.inventory, size, current: 1 }
+                              }));
+                            }}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+                              paginations.inventory.size === size
+                                ? 'bg-white text-emerald-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <div className="text-slate-400">
+                      页码 {inventoryPaged.current} / {inventoryPaged.totalPages}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={() => changePage('inventory', 'prev')} 
+                        disabled={inventoryPaged.current === 1}
+                        className="p-1 px-3 border border-slate-200 rounded-lg bg-white disabled:opacity-40 transition-all font-bold active:bg-slate-100"
+                      >
+                        ◀ 前一页
+                      </button>
+                      <button 
+                        onClick={() => changePage('inventory', 'next')} 
+                        disabled={inventoryPaged.current === inventoryPaged.totalPages}
+                        className="p-1 px-3 border border-slate-200 rounded-lg bg-white disabled:opacity-40 transition-all font-bold active:bg-slate-100"
+                      >
+                        后一页 ▶
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1230,7 +1262,7 @@ export default function App() {
               </div>
 
               <div className="overflow-x-auto border border-slate-100 rounded-xl">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full min-w-[680px] text-left text-xs border-collapse whitespace-nowrap">
                   <thead>
                     <tr className="bg-orange-50 text-orange-950 border-b border-orange-100">
                       <th className="p-2.5 font-bold">条码</th>
@@ -1271,25 +1303,57 @@ export default function App() {
               </div>
 
               {/* Pagination for Sold records */}
-              {soldPaged.totalCount > paginations.sold.size && (
-                <div className="flex items-center justify-between text-xs text-slate-500" id="pagerSold">
-                  <span>共 {soldPaged.totalCount} 条</span>
-                  <div className="flex items-center gap-1.5">
-                    <button 
-                      onClick={() => changePage('sold', 'prev')} 
-                      disabled={soldPaged.current === 1}
-                      className="p-1 px-2 border border-slate-200 rounded-lg bg-slate-50 disabled:opacity-40 transition-all font-bold active:bg-slate-100"
-                    >
-                      ◀
-                    </button>
-                    <span className="font-bold text-slate-700">{soldPaged.current} / {soldPaged.totalPages}</span>
-                    <button 
-                      onClick={() => changePage('sold', 'next')} 
-                      disabled={soldPaged.current === soldPaged.totalPages}
-                      className="p-1 px-2 border border-slate-200 rounded-lg bg-slate-50 disabled:opacity-40 transition-all font-bold active:bg-slate-100"
-                    >
-                      ▶
-                    </button>
+              {soldPaged.totalCount > 0 && (
+                <div className="flex flex-col gap-2.5 text-xs text-slate-500 select-none border-t border-slate-100 pt-3" id="pagerSold">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-medium text-slate-600">已售共 {soldPaged.totalCount} 件商品</span>
+                    
+                    {/* Size Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-400">每页:</span>
+                      <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                        {[10, 20, 50].map((size) => (
+                          <button
+                            key={size}
+                            onClick={() => {
+                              setPaginations(prev => ({
+                                ...prev,
+                                sold: { ...prev.sold, size, current: 1 }
+                              }));
+                            }}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+                              paginations.sold.size === size
+                                ? 'bg-white text-emerald-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <div className="text-slate-400">
+                      页码 {soldPaged.current} / {soldPaged.totalPages}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={() => changePage('sold', 'prev')} 
+                        disabled={soldPaged.current === 1}
+                        className="p-1 px-3 border border-slate-200 rounded-lg bg-white disabled:opacity-40 transition-all font-bold active:bg-slate-100"
+                      >
+                        ◀ 前一页
+                      </button>
+                      <button 
+                        onClick={() => changePage('sold', 'next')} 
+                        disabled={soldPaged.current === soldPaged.totalPages}
+                        className="p-1 px-3 border border-slate-200 rounded-lg bg-white disabled:opacity-40 transition-all font-bold active:bg-slate-100"
+                      >
+                        后一页 ▶
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
