@@ -90,6 +90,23 @@ export default function App() {
   // Stocktake Operations State
   const [stocktakeActive, setStocktakeActive] = useState(false);
   const [localStocktakeItems, setLocalStocktakeItems] = useState<StocktakeItem[]>([]);
+  const localStocktakeItemsRef = useRef<StocktakeItem[]>([]);
+  
+  useEffect(() => {
+    localStocktakeItemsRef.current = localStocktakeItems;
+  }, [localStocktakeItems]);
+
+  const [stocktakeToast, setStocktakeToast] = useState<{ text: string; sub: string; type: 'success' | 'warn' | 'info' } | null>(null);
+
+  useEffect(() => {
+    if (stocktakeToast) {
+      const timer = setTimeout(() => {
+        setStocktakeToast(null);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [stocktakeToast]);
+
   const [isStCollapsed, setIsStCollapsed] = useState(true);
   const [stocktakeBarcodeInput, setStocktakeBarcodeInput] = useState('');
   const [stocktakeSearch, setStocktakeSearch] = useState('');
@@ -409,20 +426,80 @@ export default function App() {
     const rawCode = String(code).trim();
     if (!rawCode) return;
 
-    let found = false;
-    const updated = localStocktakeItems.map(item => {
-      if (String(item.code).trim() === rawCode) {
-        found = true;
-        return { ...item, scanned: true };
-      }
-      return item;
-    });
+    const currentItems = localStocktakeItemsRef.current;
+    const foundIndex = currentItems.findIndex(item => String(item.code).trim() === rawCode);
 
-    if (!found) {
-      alert(`⚠️ 警告: 条码【${rawCode}】不属于【${username}】的店内在售库存！`);
-    } else {
-      setLocalStocktakeItems(updated);
+    if (foundIndex === -1) {
+      alert(`⚠️ 警告: 条码【${rawCode}】不属于您的店内在售库存！`);
+      return;
     }
+
+    const matchedItem = currentItems[foundIndex];
+    if (matchedItem.scanned) {
+      setStocktakeToast({
+        text: `⚠️ 商品重复扫码`,
+        sub: `【${matchedItem.name}】(${rawCode}) 已在盘点明细中`,
+        type: 'warn'
+      });
+      
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc1.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc2.frequency.setValueAtTime(330, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        
+        osc1.start();
+        osc2.start();
+        osc1.stop(audioCtx.currentTime + 0.15);
+        osc2.stop(audioCtx.currentTime + 0.15);
+      } catch (err) {}
+      return;
+    }
+
+    const updated = [...currentItems];
+    updated[foundIndex] = { ...matchedItem, scanned: true };
+    setLocalStocktakeItems(updated);
+
+    // Audio Beep
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.12);
+    } catch (e) {}
+
+    // TTS readout feedback
+    try {
+      if ('speechSynthesis' in window) {
+        const text = `${matchedItem.name}，扫码通过`;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.45;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch (e) {}
+
+    setStocktakeToast({
+      text: `✅ 扫码检入成功`,
+      sub: `【${matchedItem.name}】(${rawCode}) 已核对`,
+      type: 'success'
+    });
   };
 
   const handleManualStocktakeCheck = (e: React.KeyboardEvent) => {
@@ -645,6 +722,23 @@ export default function App() {
 
   return (
     <div id="main-app" className="min-h-screen bg-slate-50 select-none pb-12">
+      {/* Floating Stocktake Notification Banner */}
+      {stocktakeToast && (
+        <div className="fixed top-20 left-4 right-4 max-w-sm mx-auto z-50 bg-slate-900 border border-slate-800 text-white rounded-2xl p-4.5 shadow-2xl flex items-center gap-3.5 animate-fadeIn">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg ${
+            stocktakeToast.type === 'success' ? 'bg-emerald-500 shadow-emerald-500/15' : 
+            stocktakeToast.type === 'warn' ? 'bg-amber-500 shadow-amber-500/15' : 'bg-blue-500 shadow-blue-500/15'
+          }`}>
+            {stocktakeToast.type === 'success' ? <CheckCircle2 className="w-5.5 h-5.5" /> : 
+             stocktakeToast.type === 'warn' ? <HelpCircle className="w-5.5 h-5.5" /> : <Search className="w-5.5 h-5.5" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-xs font-bold leading-none tracking-wide text-white uppercase">{stocktakeToast.text}</h4>
+            <p className="text-[11px] text-slate-300 font-bold mt-1.5 truncate">{stocktakeToast.sub}</p>
+          </div>
+        </div>
+      )}
+
       {/* Top Navigation Frame */}
       <header className="bg-white border-b border-slate-100 sticky top-0 z-40 px-4 py-3 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-2">
