@@ -95,6 +95,41 @@ async function saveData(data: any, filepath: string = DATA_FILE, commitMsg: stri
   }
 }
 
+async function syncFromGitHubAtStartup() {
+  if (!GH_TOKEN || !GH_REPO) {
+    console.log("ℹ️ GitHub 环境变量（GH_TOKEN 或 GH_REPO）未配置，跳过启动时拉取最新数据。");
+    return;
+  }
+  
+  console.log("🔄 开始从 GitHub 拉取最新数据文件...");
+  const filesToSync = [DATA_FILE, STOCKTAKE_FILE];
+  
+  for (const filepath of filesToSync) {
+    try {
+      const filename = path.basename(filepath);
+      const url = `https://api.github.com/repos/${GH_REPO}/contents/${filename}`;
+      const getResp = await fetch(url, {
+        headers: {
+          'Authorization': `token ${GH_TOKEN}`,
+          'User-Agent': 'Node-App-Sync'
+        }
+      });
+      if (getResp.ok) {
+        const getJson: any = await getResp.json();
+        const content = Buffer.from(getJson.content, 'base64').toString('utf-8');
+        fs.writeFileSync(filepath, content, 'utf-8');
+        console.log(`✅ 成功拉取 ${filename} 并同步到本地。`);
+      } else if (getResp.status === 404) {
+        console.log(`ℹ️ GitHub 上未找到 ${filename} 文件。`);
+      } else {
+        console.error(`❌ 获取 ${filename} 失败，HTTP 状态码: ${getResp.status}`);
+      }
+    } catch (e: any) {
+      console.error(`❌ 拉取 ${filepath} 发生网络异常:`, e.message);
+    }
+  }
+}
+
 function getBjToday(): string {
   // Bejing time is UTC+8
   const utc = new Date().getTime();
@@ -145,7 +180,7 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-app.get('/api/inventory', requires_auth, (req, res) => {
+app.get('/api/inventory', requires_auth, async (req, res) => {
   const currentUser = get_current_user(req);
   const allData = loadData(DATA_FILE);
   const todayStr = getBjToday().split(' ')[0];
@@ -397,27 +432,6 @@ app.post('/api/stocktake/submit', requires_auth, async (req, res) => {
 
 app.get('/api/stocktake/history', requires_auth, async (req, res) => {
   const currentUser = get_current_user(req);
-  
-  if (GH_TOKEN && GH_REPO && !fs.existsSync(STOCKTAKE_FILE)) {
-    try {
-      const filename = path.basename(STOCKTAKE_FILE);
-      const url = `https://api.github.com/repos/${GH_REPO}/contents/${filename}`;
-      const getResp = await fetch(url, {
-        headers: {
-          'Authorization': `token ${GH_TOKEN}`,
-          'User-Agent': 'Node-App-Sync'
-        }
-      });
-      if (getResp.ok) {
-        const getJson: any = await getResp.json();
-        const content = Buffer.from(getJson.content, 'base64').toString('utf-8');
-        fs.writeFileSync(STOCKTAKE_FILE, content, 'utf-8');
-      }
-    } catch (e) {
-      console.error(`尝试从 GitHub 获取盘点文件失败:`, e);
-    }
-  }
-  
   const allHistory = loadData(STOCKTAKE_FILE);
   const userHistory = allHistory.filter(h => (h.owner || 'fenggao') === currentUser);
   res.json(userHistory);
@@ -442,6 +456,7 @@ if (!isProd) {
 }
 
 const PORT = 3000;
+await syncFromGitHubAtStartup();
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
