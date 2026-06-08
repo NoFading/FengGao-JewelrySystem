@@ -200,7 +200,8 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
       return res.json({ success: false, msg: 'Excel文件内容为空' });
     }
     
-    const headers = Object.keys(rawRows[0]);
+    const sheetRowsArray = xlsx.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+    const headers = (sheetRowsArray[0] || []).map(h => String(h || '').trim()).filter(Boolean);
     let code_col: string | null = null;
     let name_col: string | null = null;
     let cate_col: string | null = null;
