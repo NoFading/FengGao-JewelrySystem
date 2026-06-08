@@ -1,2 +1,292 @@
 [
+    {
+        "code": "FG00001",
+        "name": "足金手镯",
+        "category": "手镯",
+        "weight": "20",
+        "price": "0",
+        "fee": "80",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00002",
+        "name": "足金手镯",
+        "category": "手镯",
+        "weight": "22",
+        "price": "123",
+        "fee": "80",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00003",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.2",
+        "price": "1213",
+        "fee": "120",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00004",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.5",
+        "price": "2700",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00005",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.45",
+        "price": "0",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00006",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.48",
+        "price": "2664",
+        "fee": "135",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00007",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.51",
+        "price": "2718",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00008",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.54",
+        "price": "2772",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00009",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.57",
+        "price": "2826",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00010",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.6",
+        "price": "2880",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00011",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.63",
+        "price": "2934",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00012",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.66",
+        "price": "2988",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00013",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.69",
+        "price": "3042",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00014",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.72",
+        "price": "3096",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00015",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.75",
+        "price": "3150",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00016",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.78",
+        "price": "3204",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00017",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.81",
+        "price": "3258",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00018",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.84",
+        "price": "3312",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00019",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.87",
+        "price": "3366",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00020",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.9",
+        "price": "3420",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00021",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.93",
+        "price": "3474",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00022",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.96",
+        "price": "3528",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00023",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "1.99",
+        "price": "3582",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00024",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "2.02",
+        "price": "3636",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00025",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "2.05",
+        "price": "3690",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00026",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "2.08",
+        "price": "3744",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00027",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "2.11",
+        "price": "3798",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00028",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "2.14",
+        "price": "3852",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    },
+    {
+        "code": "FG00029",
+        "name": "足金耳饰",
+        "category": "耳饰",
+        "weight": "2.17",
+        "price": "3906",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
+    }
 ]
