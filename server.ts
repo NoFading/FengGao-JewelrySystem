@@ -31,7 +31,13 @@ function loadData(filepath: string = DATA_FILE): any[] {
     try {
       const content = fs.readFileSync(filepath, 'utf-8').trim();
       if (content) {
-        return JSON.parse(content);
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        } else {
+          console.error(`🚨 警告: ${filepath} 的内容不是数组类型，已自动重置为空数组。`);
+          return [];
+        }
       }
     } catch (e) {
       console.error(`加载 ${filepath} 失败:`, e);
