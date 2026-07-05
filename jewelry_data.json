@@ -6,8 +6,10 @@
         "weight": "20",
         "price": "0",
         "fee": "80",
-        "status": "在售",
-        "owner": "test"
+        "status": "已售出",
+        "owner": "test",
+        "sold_date": "2026-07-05",
+        "sold_price": "20000"
     },
     {
         "code": "FG00002",
