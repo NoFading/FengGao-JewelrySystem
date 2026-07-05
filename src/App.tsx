@@ -34,6 +34,7 @@ interface JewelryItem {
   sold_date?: string;
   sold_price?: string;
   owner?: string;
+  statusInDb?: string;
 }
 
 interface StocktakeItem extends JewelryItem {
@@ -86,6 +87,19 @@ export default function App() {
   const [previewList, setPreviewList] = useState<JewelryItem[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // New Inbound & Modification States
+  const [importMode, setImportMode] = useState<'new' | 'modify'>('new');
+  const [inputMethod, setInputMethod] = useState<'excel' | 'manual'>('excel');
+
+  // Manual Form States
+  const [manualCode, setManualCode] = useState('');
+  const [manualName, setManualName] = useState('');
+  const [manualCategory, setManualCategory] = useState('黄金');
+  const [manualWeight, setManualWeight] = useState('');
+  const [manualPrice, setManualPrice] = useState('');
+  const [manualFee, setManualFee] = useState('');
+  const [manualCheckStatus, setManualCheckStatus] = useState<{ type: 'success' | 'warn' | 'error'; msg: string } | null>(null);
 
   // Stocktake Operations State
   const [stocktakeActive, setStocktakeActive] = useState(false);
@@ -386,16 +400,207 @@ export default function App() {
       const res = await fetch('/api/confirm_save', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ data: previewList })
+        body: JSON.stringify({ data: previewList, mode: importMode })
       });
       const data = await res.json();
       alert(data.msg);
-      cancelImport();
-      loadAllData();
+      if (data.success) {
+        cancelImport();
+        loadAllData();
+      }
     } catch (e) {
       alert('上架确认请求失败');
     }
   };
+
+  const importOnlyNewFiltered = async () => {
+    const filtered = previewList.filter(item => item.statusInDb === '无');
+    if (filtered.length === 0) {
+      alert('⚠️ 剔除所有已存在条码后，没有可上架的新货！');
+      return;
+    }
+    if (!window.confirm(`确认自动剔除 ${previewList.length - filtered.length} 件已存在条码，仅上架其余 ${filtered.length} 件全新货品吗？`)) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/confirm_save', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ data: filtered, mode: 'new' })
+      });
+      const data = await res.json();
+      alert(data.msg);
+      if (data.success) {
+        cancelImport();
+        loadAllData();
+      }
+    } catch (e) {
+      alert('安全过滤上架网络请求失败');
+    }
+  };
+
+  const importOnlyModifyFiltered = async () => {
+    const filtered = previewList.filter(item => item.statusInDb !== '无');
+    if (filtered.length === 0) {
+      alert('⚠️ 剔除所有未录入条码后，没有可修改的旧货！');
+      return;
+    }
+    if (!window.confirm(`确认自动剔除 ${previewList.length - filtered.length} 件未录入条码，仅更新其余 ${filtered.length} 件已有货品吗？`)) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/confirm_save', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ data: filtered, mode: 'modify' })
+      });
+      const data = await res.json();
+      alert(data.msg);
+      if (data.success) {
+        cancelImport();
+        loadAllData();
+      }
+    } catch (e) {
+      alert('安全过滤修改网络请求失败');
+    }
+  };
+
+  const checkManualBarcode = (codeVal: string) => {
+    const code = codeVal.trim();
+    if (!code) {
+      setManualCheckStatus(null);
+      return;
+    }
+
+    const existsInActive = activeInventory.find(item => String(item.code).trim() === code);
+    const existsInSold = soldInventory.find(item => String(item.code).trim() === code);
+
+    if (importMode === 'new') {
+      if (existsInActive) {
+        setManualCheckStatus({
+          type: 'error',
+          msg: `⚠️ 该条码已存在于「在售库存」中！新货入库模式下禁止重复录入，防止意外覆盖。商品名：${existsInActive.name}`
+        });
+      } else if (existsInSold) {
+        setManualCheckStatus({
+          type: 'error',
+          msg: `⚠️ 该条码已被「售出记账」！新货入库模式下禁止重复录入。商品名：${existsInSold.name}`
+        });
+      } else {
+        setManualCheckStatus({
+          type: 'success',
+          msg: `✅ 该条码可以使用（全新条码）`
+        });
+      }
+    } else { // modify
+      if (existsInActive) {
+        setManualCheckStatus({
+          type: 'success',
+          msg: `✅ 成功检索到该商品，下方已自动填入历史数值，修改后保存即可。`
+        });
+        // Auto fill form
+        setManualName(existsInActive.name || '');
+        setManualCategory(existsInActive.category || '黄金');
+        setManualWeight(existsInActive.weight || '');
+        setManualPrice(existsInActive.price || '');
+        setManualFee(existsInActive.fee || '');
+      } else if (existsInSold) {
+        setManualCheckStatus({
+          type: 'error',
+          msg: `⚠️ 该货品已售出（商品名：${existsInSold.name}），在旧货修改中禁止修改已售历史属性！`
+        });
+      } else {
+        setManualCheckStatus({
+          type: 'error',
+          msg: `❌ 库中未找到该条码！旧货修改模式下必须输入完全一致的已有条码。`
+        });
+      }
+    }
+  };
+
+  const handleManualSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = manualCode.trim();
+    const name = manualName.trim();
+    const category = manualCategory.trim();
+    const weight = manualWeight.trim();
+    const price = manualPrice.trim();
+    const fee = manualFee.trim();
+
+    if (!code) {
+      alert('请输入条码！');
+      return;
+    }
+    if (!name) {
+      alert('请输入货品名称！');
+      return;
+    }
+    if (!category) {
+      alert('请选择品类！');
+      return;
+    }
+
+    const existsInActive = activeInventory.some(item => String(item.code).trim() === code);
+    const existsInSold = soldInventory.some(item => String(item.code).trim() === code);
+    const existsInDb = existsInActive || existsInSold;
+
+    if (importMode === 'new') {
+      if (existsInDb) {
+        alert('⚠️ 录入失败：该条码已存在于数据库中，新货入库模式下无法覆盖！');
+        return;
+      }
+    } else {
+      if (!existsInActive) {
+        if (existsInSold) {
+          alert('⚠️ 修改失败：该货品已售出，无法在库中进行修改！');
+        } else {
+          alert('❌ 修改失败：该条码在数据库中不存在，旧货修改模式下禁止创建新条码！');
+        }
+        return;
+      }
+    }
+
+    const payload = [{
+      code,
+      name,
+      category,
+      weight: weight || '0',
+      price: price || '0',
+      fee: fee || '0'
+    }];
+
+    try {
+      const res = await fetch('/api/confirm_save', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ data: payload, mode: importMode })
+      });
+      const data = await res.json();
+      alert(data.msg);
+      if (data.success) {
+        // Clear manual input
+        setManualCode('');
+        setManualName('');
+        setManualWeight('');
+        setManualPrice('');
+        setManualFee('');
+        setManualCheckStatus(null);
+        loadAllData();
+      }
+    } catch (e) {
+      alert('网络提交异常，保存失败');
+    }
+  };
+
+  useEffect(() => {
+    setManualCode('');
+    setManualName('');
+    setManualWeight('');
+    setManualPrice('');
+    setManualFee('');
+    setManualCheckStatus(null);
+    cancelImport();
+  }, [importMode]);
 
   const cancelImport = () => {
     setPreviewList([]);
@@ -950,44 +1155,264 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 2: EXCEL IMPORT TICKET */}
+          {/* TAB 2: INBOUND & MODIFICATION TICKET */}
           {activeOpTab === 'import' && (
-            <div id="contentOp2" className="space-y-3">
-              <div className="bg-rose-50 border border-rose-200/60 p-3 rounded-xl text-[11px] text-rose-900 leading-relaxed font-medium space-y-1">
-                <span className="font-extrabold text-[12px] text-rose-700 flex items-center gap-1.5 mb-1.5">
-                  ⚠️ 批量导入 Excel 严格规范说明:
-                </span>
+            <div id="contentOp2" className="space-y-3.5">
+              
+              {/* Dynamic Mode Selector Tabs */}
+              <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-500 text-center border border-slate-200/50">
+                <button 
+                  type="button"
+                  onClick={() => setImportMode('new')}
+                  className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${importMode === 'new' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-200/50'}`}
+                >
+                  📥 新货入库
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setImportMode('modify')}
+                  className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${importMode === 'modify' ? 'bg-amber-600 text-white shadow-sm' : 'hover:bg-slate-200/50'}`}
+                >
+                  ✏️ 旧货修改
+                </button>
+              </div>
+
+              {/* Mode Description Banner */}
+              <div className={`p-2.5 rounded-xl text-[10.5px] leading-relaxed font-semibold flex items-start gap-1.5 ${importMode === 'new' ? 'bg-blue-50 text-blue-800 border border-blue-100' : 'bg-amber-50 text-amber-800 border border-amber-100'}`}>
+                <span>💡</span>
                 <p>
-                  表格首行<b>必须完整包含以下 6 核心标题</b> (顺序可不限, 列字不能错):
-                </p>
-                <div className="flex flex-wrap gap-1 py-1">
-                  {['条码', '货品名称', '品类', '金重', '标价', '工费'].map((item, idx) => (
-                    <span key={idx} className="bg-white border border-rose-300 text-rose-700 px-1.5 py-0.5 rounded font-extrabold text-[10px]">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-slate-500 text-[10px] mt-1 font-normal">
-                  💡 提示：系统支持模糊匹配这些列标题。
+                  {importMode === 'new' 
+                    ? '【新货入库】模式：用于录入全新的商品条码。如果条码已存在于数据库中，系统将自动发出警报并安全拦截，杜绝误覆盖旧账。' 
+                    : '【旧货修改】模式：用于覆盖更新已有库存属性。必须输入或导入与数据库完全一致的已有条码，若条码不存在则会发出警告并拦截。'}
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <input 
-                  type="file" 
-                  ref={fileInputRef}
-                  onChange={handleExcelSelect} 
-                  accept=".xlsx, .xls"
-                  className="w-full text-xs font-semibold text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-blue-50 file:text-blue-700 active:bg-slate-100 transition-all"
-                />
-                
-                <button 
-                  onClick={uploadExcel}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
-                >
-                  选择并解析新货 Excel
-                </button>
+              {/* Input Method Switcher */}
+              <div className="flex gap-4 justify-center text-xs font-bold border-b border-slate-100 pb-2.5">
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-600">
+                  <input 
+                    type="radio" 
+                    name="inputMethod" 
+                    checked={inputMethod === 'excel'} 
+                    onChange={() => setInputMethod('excel')}
+                    className="accent-blue-600"
+                  />
+                  <span>📂 Excel 批量导入</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-600">
+                  <input 
+                    type="radio" 
+                    name="inputMethod" 
+                    checked={inputMethod === 'manual'} 
+                    onChange={() => setInputMethod('manual')}
+                    className="accent-blue-600"
+                  />
+                  <span>⌨️ 单件手动录入</span>
+                </label>
               </div>
+
+              {/* Method Content 1: Excel Batch Import */}
+              {inputMethod === 'excel' && (
+                <div className="space-y-3 animate-fadeIn">
+                  <div className="bg-rose-50 border border-rose-200/60 p-3 rounded-xl text-[11px] text-rose-900 leading-relaxed font-medium space-y-1">
+                    <span className="font-extrabold text-[12px] text-rose-700 flex items-center gap-1.5 mb-1.5">
+                      ⚠️ 批量导入 Excel 严格规范说明:
+                    </span>
+                    <p>
+                      表格首行<b>必须完整包含以下 6 核心标题</b> (顺序可不限, 列字不能错):
+                    </p>
+                    <div className="flex flex-wrap gap-1 py-1">
+                      {['条码', '货品名称', '品类', '金重', '标价', '工费'].map((item, idx) => (
+                        <span key={idx} className="bg-white border border-rose-300 text-rose-700 px-1.5 py-0.5 rounded font-extrabold text-[10px]">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-slate-500 text-[10px] mt-1 font-normal">
+                      💡 提示：系统支持模糊匹配这些列标题，导入时会自动比对数据库进行防重、防错校验。
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      onChange={handleExcelSelect} 
+                      accept=".xlsx, .xls"
+                      className="w-full text-xs font-semibold text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-blue-50 file:text-blue-700 active:bg-slate-100 transition-all"
+                    />
+                    
+                    <button 
+                      onClick={uploadExcel}
+                      className={`w-full text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm active:scale-95 ${importMode === 'new' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                    >
+                      {importMode === 'new' ? '🔍 选择并校验新货 Excel' : '🔍 选择并校验旧货修改 Excel'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Method Content 2: Manual Single Input Form */}
+              {inputMethod === 'manual' && (
+                <form onSubmit={handleManualSave} className="space-y-3.5 animate-fadeIn bg-white p-3.5 border border-slate-100 rounded-xl">
+                  
+                  {/* Barcode input field */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                      1. 货品唯一条码 / 标签编码
+                    </label>
+                    <div className="flex gap-1.5">
+                      <input 
+                        type="text" 
+                        value={manualCode}
+                        onChange={(e) => {
+                          setManualCode(e.target.value);
+                          checkManualBarcode(e.target.value);
+                        }}
+                        placeholder="请输入或扫码输入要操作的条码"
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-amber-700 font-bold select-text placeholder:text-slate-300"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => checkManualBarcode(manualCode)}
+                        className="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg active:scale-95 transition-all"
+                      >
+                        手动核验
+                      </button>
+                    </div>
+
+                    {/* Barcode audit status prompt */}
+                    {manualCheckStatus && (
+                      <div className={`text-[10.5px] p-2 rounded-lg mt-1.5 font-bold flex items-start gap-1.5 leading-relaxed ${
+                        manualCheckStatus.type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200/50' :
+                        manualCheckStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50' :
+                        'bg-slate-50 text-slate-600 border border-slate-200'
+                      }`}>
+                        <span>{manualCheckStatus.msg}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Other item attributes fields */}
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                        2. 货品名称 (款式描述)
+                      </label>
+                      <input 
+                        type="text" 
+                        value={manualName}
+                        onChange={(e) => setManualName(e.target.value)}
+                        placeholder="例：足金光圈手镯、足金福字吊坠"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 select-text text-slate-800"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                        3. 商品品类
+                      </label>
+                      <input 
+                        type="text" 
+                        value={manualCategory}
+                        onChange={(e) => setManualCategory(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 select-text text-slate-800 font-bold"
+                        required
+                      />
+                      {/* Quick select buttons */}
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {['戒指', '耳环', '项链', '手镯', '吊坠', '黄金', '铂金'].map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setManualCategory(cat)}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all border ${
+                              manualCategory === cat
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                          4. 金重 (克 g)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.001"
+                          value={manualWeight}
+                          onChange={(e) => setManualWeight(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 select-text text-slate-800"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                          5. 标签标价 (元)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          value={manualPrice}
+                          onChange={(e) => setManualPrice(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 select-text text-slate-800"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                          6. 克工费 (元)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          value={manualFee}
+                          onChange={(e) => setManualFee(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 select-text text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submission and auditing controls */}
+                  <div className="pt-2">
+                    <button 
+                      type="submit"
+                      disabled={manualCheckStatus?.type === 'error'}
+                      className={`w-full font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm active:scale-95 text-white flex items-center justify-center gap-1 ${
+                        manualCheckStatus?.type === 'error' 
+                          ? 'bg-slate-300 cursor-not-allowed' 
+                          : (importMode === 'new' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/10' : 'bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-700 hover:to-red-700 shadow-amber-500/10')
+                      }`}
+                    >
+                      {manualCheckStatus?.type === 'error' ? (
+                        <span>⛔ 校验有冲突，禁止保存</span>
+                      ) : (
+                        importMode === 'new' ? (
+                          <>
+                            <span>➕ 确认上架入库全新商品</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>✏️ 确认保存旧货属性修改</span>
+                          </>
+                        )
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 
@@ -1146,54 +1571,158 @@ export default function App() {
 
         {/* Inbound Preview Zone Card */}
         {showPreview && previewList.length > 0 && (
-          <section id="previewZone" className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl shadow-sm animate-fadeIn space-y-3">
-            <div className="flex items-center gap-1 border-l-4 border-amber-500 pl-2">
-              <FileSpreadsheet className="w-4 h-4 text-amber-500" />
-              <h2 className="text-xs font-bold text-amber-900">⚠️ 待入库新货安全预览</h2>
-            </div>
+          (() => {
+            const duplicateCount = previewList.filter(item => item.statusInDb !== '无').length;
+            const notFoundCount = previewList.filter(item => item.statusInDb === '无').length;
+            const hasViolations = importMode === 'new' ? (duplicateCount > 0) : (notFoundCount > 0);
 
-            <div className="overflow-x-auto max-h-48 border border-amber-100 rounded-xl bg-white select-text">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead>
-                  <tr className="bg-amber-50 text-amber-800">
-                    <th className="p-2 font-bold">条码</th>
-                    <th className="p-2 font-bold">货品名称</th>
-                    <th className="p-2 font-bold">品类</th>
-                    <th className="p-2 font-bold">金重</th>
-                    <th className="p-2 font-bold">标签标价</th>
-                    <th className="p-2 font-bold">工费</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-amber-100 font-medium">
-                  {previewList.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-amber-50/30">
-                      <td className="p-2 font-bold text-amber-600">{item.code}</td>
-                      <td className="p-2 text-slate-800">{item.name}</td>
-                      <td className="p-2 text-slate-500">{item.category}</td>
-                      <td className="p-2 text-slate-500">{item.weight}g</td>
-                      <td className="p-2 text-slate-700">¥{item.price}</td>
-                      <td className="p-2 text-slate-500">¥{item.fee}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            return (
+              <section id="previewZone" className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl shadow-sm animate-fadeIn space-y-3">
+                <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                  <div className="flex items-center gap-1 border-l-4 border-amber-500 pl-2">
+                    <FileSpreadsheet className="w-4 h-4 text-amber-500" />
+                    <h2 className="text-xs font-bold text-amber-900">
+                      {importMode === 'new' ? '📦 新货入库安全预览' : '✏️ 旧货修改安全预览'}
+                    </h2>
+                  </div>
+                  <span className="text-[10px] font-bold bg-amber-200/55 text-amber-800 px-2 py-0.5 rounded-lg">
+                    共 {previewList.length} 件
+                  </span>
+                </div>
 
-            <div className="flex gap-2 pt-1.5">
-              <button 
-                onClick={confirmImport}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl transition-all shadow-sm active:scale-95"
-              >
-                确认锁库存上架
-              </button>
-              <button 
-                onClick={cancelImport}
-                className="bg-slate-500 hover:bg-slate-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-sm active:scale-95"
-              >
-                取消
-              </button>
-            </div>
-          </section>
+                {/* Warning Card Banners */}
+                {importMode === 'new' && duplicateCount > 0 && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-700 p-2.5 rounded-xl text-[11px] leading-relaxed space-y-1">
+                    <div className="font-extrabold flex items-center gap-1">
+                      <span>⚠️ 录入限制警报：检测到 {duplicateCount} 个已有条码！</span>
+                    </div>
+                    <p className="text-rose-600 font-medium">
+                      “新货入库”模式下禁止覆盖已有商品。您可以<b>点击下方剔除按钮</b>，仅导入全新货品；或修改 Excel 里的条码后重试。
+                    </p>
+                  </div>
+                )}
+
+                {importMode === 'modify' && notFoundCount > 0 && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-700 p-2.5 rounded-xl text-[11px] leading-relaxed space-y-1">
+                    <div className="font-extrabold flex items-center gap-1">
+                      <span>❌ 修改限制警报：检测到 {notFoundCount} 个未录入条码！</span>
+                    </div>
+                    <p className="text-rose-600 font-medium">
+                      “旧货修改”模式只允许修改已有货品。您可以<b>点击下方剔除按钮</b>，仅修改已有货品；或者到“新货入库”中录入全新条码。
+                    </p>
+                  </div>
+                )}
+
+                {!hasViolations && (
+                  <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 p-2.5 rounded-xl text-[11px] font-medium">
+                    {importMode === 'new' 
+                      ? '✅ 数据无冲突！所有条码均为全新商品，可以安全上架。' 
+                      : '✅ 校验成功！所有条码均在在售库存中存在，可以安全更新。'}
+                  </div>
+                )}
+
+                <div className="overflow-x-auto max-h-56 border border-amber-100 rounded-xl bg-white select-text">
+                  <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+                    <thead>
+                      <tr className="bg-amber-50 text-amber-800 border-b border-amber-100">
+                        <th className="p-2 font-bold">条码</th>
+                        <th className="p-2 font-bold">货品名称</th>
+                        <th className="p-2 font-bold">品类</th>
+                        <th className="p-2 font-bold">金重</th>
+                        <th className="p-2 font-bold">标签标价</th>
+                        <th className="p-2 font-bold">工费</th>
+                        <th className="p-2 font-bold">校验状态</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-100 font-medium">
+                      {previewList.map((item, idx) => {
+                        const isDuplicate = item.statusInDb !== '无';
+                        const isViolation = importMode === 'new' ? isDuplicate : !isDuplicate;
+
+                        return (
+                          <tr key={idx} className={`hover:bg-amber-50/20 ${isViolation ? 'bg-rose-50/60' : ''}`}>
+                            <td className="p-2 font-bold text-slate-800">{item.code}</td>
+                            <td className="p-2 text-slate-700">{item.name}</td>
+                            <td className="p-2">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold ${getCategoryColor(item.category)}`}>
+                                {item.category}
+                              </span>
+                            </td>
+                            <td className="p-2 text-slate-500">{item.weight}g</td>
+                            <td className="p-2 text-slate-700">¥{item.price}</td>
+                            <td className="p-2 text-slate-400">¥{item.fee}</td>
+                            <td className="p-2">
+                              {importMode === 'new' ? (
+                                isDuplicate ? (
+                                  <span className="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[10px] font-extrabold">
+                                    ⚠️ 已存在({item.statusInDb})
+                                  </span>
+                                ) : (
+                                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-extrabold">
+                                    🟢 全新可用
+                                  </span>
+                                )
+                              ) : (
+                                !isDuplicate ? (
+                                  <span className="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[10px] font-extrabold">
+                                    ❌ 库中不存在
+                                  </span>
+                                ) : (
+                                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-extrabold">
+                                    🟢 可修改
+                                  </span>
+                                )
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Operations Suite buttons */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={confirmImport}
+                      disabled={hasViolations}
+                      className={`flex-1 font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm active:scale-95 text-white ${hasViolations ? 'bg-slate-300 cursor-not-allowed' : (importMode === 'new' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700')}`}
+                    >
+                      {hasViolations 
+                        ? '⛔ 存在冲突，禁止保存' 
+                        : (importMode === 'new' ? '📥 确认全新条码锁库上架' : '✏️ 确认批量保存修改')}
+                    </button>
+                    <button 
+                      onClick={cancelImport}
+                      className="bg-slate-500 hover:bg-slate-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-all shadow-sm active:scale-95"
+                    >
+                      取消
+                    </button>
+                  </div>
+
+                  {/* Smart auto filtering assist buttons */}
+                  {importMode === 'new' && duplicateCount > 0 && duplicateCount < previewList.length && (
+                    <button
+                      onClick={importOnlyNewFiltered}
+                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-[11px] py-2 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1"
+                    >
+                      <span>⚡ 自动剔除 {duplicateCount} 件重复条码，仅上架其余 {previewList.length - duplicateCount} 件全新货品</span>
+                    </button>
+                  )}
+
+                  {importMode === 'modify' && notFoundCount > 0 && notFoundCount < previewList.length && (
+                    <button
+                      onClick={importOnlyModifyFiltered}
+                      className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-extrabold text-[11px] py-2 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1"
+                    >
+                      <span>⚡ 自动剔除 {notFoundCount} 件不存在商品，仅覆盖修改其余 {previewList.length - notFoundCount} 件旧货</span>
+                    </button>
+                  )}
+                </div>
+              </section>
+            );
+          })()
         )}
 
         {/* View Suite Tab Block (Tables and Reports) */}
