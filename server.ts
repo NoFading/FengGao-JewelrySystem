@@ -279,7 +279,7 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
     for (const row of rawRows) {
       const raw_code = row[code_col!];
       if (raw_code === undefined || raw_code === null) continue;
-      const code_str = String(raw_code).trim().split('.')[0];
+      const code_str = String(raw_code).trim().split('.')[0].toUpperCase();
       if (!code_str) continue;
       
       const name_val = row[name_col!] !== undefined ? String(row[name_col!]).trim() : "未命名";
@@ -297,7 +297,7 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
       // 检查当前用户数据库中的状态
       let statusInDb = '无';
       for (const item of current_data) {
-        if (String(item.code).trim() === code_str && (item.owner || 'fenggao') === currentUser) {
+        if (String(item.code).trim().toUpperCase() === code_str && (item.owner || 'fenggao') === currentUser) {
           statusInDb = item.status || '在售';
           break;
         }
@@ -330,7 +330,7 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
   for (let i = 0; i < current_data.length; i++) {
     const item = current_data[i];
     if ((item.owner || 'fenggao') === currentUser) {
-      user_item_map[String(item.code).trim()] = i;
+      user_item_map[String(item.code).trim().toUpperCase()] = i;
     }
   }
   
@@ -338,7 +338,7 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
   if (mode === 'new') {
     const duplicates: string[] = [];
     for (const item of new_items) {
-      const code_str = String(item.code).trim();
+      const code_str = String(item.code).trim().toUpperCase();
       if (code_str in user_item_map) {
         duplicates.push(code_str);
       }
@@ -352,7 +352,7 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
   } else if (mode === 'modify') {
     const not_found: string[] = [];
     for (const item of new_items) {
-      const code_str = String(item.code).trim();
+      const code_str = String(item.code).trim().toUpperCase();
       if (!(code_str in user_item_map)) {
         not_found.push(code_str);
       }
@@ -370,7 +370,7 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
   let skipped_sold_count = 0;
   
   for (const item of new_items) {
-    const code_str = String(item.code).trim();
+    const code_str = String(item.code).trim().toUpperCase();
     
     if (code_str in user_item_map) {
       const idx = user_item_map[code_str];
@@ -384,6 +384,7 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
       current_data[idx].weight = item.weight;
       current_data[idx].price = item.price;
       current_data[idx].fee = item.fee;
+      current_data[idx].code = code_str;
       updated_count++;
     } else {
       current_data.push({
@@ -414,14 +415,14 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
 
 app.post('/api/checkout', requires_auth, async (req, res) => {
   const currentUser = get_current_user(req);
-  const code = String(req.body.code || '').trim();
+  const code = String(req.body.code || '').trim().toUpperCase();
   const sold_price = String(req.body.sold_price || '').trim();
   const current_data = loadData(DATA_FILE);
   const todayStr = getBjToday().split(' ')[0];
   
   let found = false;
   for (const item of current_data) {
-    if (String(item.code).trim() === code && (item.owner || 'fenggao') === currentUser) {
+    if (String(item.code).trim().toUpperCase() === code && (item.owner || 'fenggao') === currentUser) {
       if (item.status === '已售出') {
         return res.json({ success: false, msg: '⚠️ 该货品已售出' });
       }
@@ -443,12 +444,12 @@ app.post('/api/checkout', requires_auth, async (req, res) => {
 
 app.post('/api/return_item', requires_auth, async (req, res) => {
   const currentUser = get_current_user(req);
-  const code = String(req.body.code || '').trim();
+  const code = String(req.body.code || '').trim().toUpperCase();
   const current_data = loadData(DATA_FILE);
   
   let found = false;
   for (const item of current_data) {
-    if (String(item.code).trim() === code && (item.owner || 'fenggao') === currentUser) {
+    if (String(item.code).trim().toUpperCase() === code && (item.owner || 'fenggao') === currentUser) {
       if (item.status === '在售') {
         return res.json({ success: false, msg: '⚠️ 该货品当前在售' });
       }
