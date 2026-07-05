@@ -290,5 +290,15 @@
         "fee": "0",
         "status": "在售",
         "owner": "test"
+    },
+    {
+        "code": "FG000040",
+        "name": "足金手镯",
+        "category": "手镯",
+        "weight": "21",
+        "price": "0",
+        "fee": "0",
+        "status": "在售",
+        "owner": "test"
     }
 ]
