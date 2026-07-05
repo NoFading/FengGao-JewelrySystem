@@ -306,7 +306,7 @@ export default function App() {
 
   // Operation executor
   const handleExecuteOperation = async () => {
-    const code = barcodeInput.trim();
+    const code = barcodeInput.trim().toUpperCase();
     if (!code) {
       alert('请先输入或扫描货品条码！');
       return;
@@ -466,14 +466,14 @@ export default function App() {
   };
 
   const checkManualBarcode = (codeVal: string) => {
-    const code = codeVal.trim();
+    const code = codeVal.trim().toUpperCase();
     if (!code) {
       setManualCheckStatus(null);
       return;
     }
 
-    const existsInActive = activeInventory.find(item => String(item.code).trim() === code);
-    const existsInSold = soldInventory.find(item => String(item.code).trim() === code);
+    const existsInActive = activeInventory.find(item => String(item.code).trim().toUpperCase() === code);
+    const existsInSold = soldInventory.find(item => String(item.code).trim().toUpperCase() === code);
 
     if (importMode === 'new') {
       if (existsInActive) {
@@ -520,7 +520,7 @@ export default function App() {
 
   const handleManualSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = manualCode.trim();
+    const code = manualCode.trim().toUpperCase();
     const name = manualName.trim();
     const category = manualCategory.trim();
     const weight = manualWeight.trim();
@@ -540,8 +540,8 @@ export default function App() {
       return;
     }
 
-    const existsInActive = activeInventory.some(item => String(item.code).trim() === code);
-    const existsInSold = soldInventory.some(item => String(item.code).trim() === code);
+    const existsInActive = activeInventory.some(item => String(item.code).trim().toUpperCase() === code);
+    const existsInSold = soldInventory.some(item => String(item.code).trim().toUpperCase() === code);
     const existsInDb = existsInActive || existsInSold;
 
     if (importMode === 'new') {
@@ -628,11 +628,11 @@ export default function App() {
   };
 
   const processStocktakeCode = (code: string) => {
-    const rawCode = String(code).trim();
+    const rawCode = String(code).trim().toUpperCase();
     if (!rawCode) return;
 
     const currentItems = localStocktakeItemsRef.current;
-    const foundIndex = currentItems.findIndex(item => String(item.code).trim() === rawCode);
+    const foundIndex = currentItems.findIndex(item => String(item.code).trim().toUpperCase() === rawCode);
 
     if (foundIndex === -1) {
       alert(`⚠️ 警告: 条码【${rawCode}】不属于您的店内在售库存！`);
