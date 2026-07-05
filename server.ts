@@ -231,6 +231,9 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
     return res.json({ success: false, msg: '未找到上传的文件' });
   }
   
+  const currentUser = get_current_user(req);
+  const current_data = loadData(DATA_FILE);
+  
   try {
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
@@ -291,13 +294,23 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
       const fee_num = parseFloat(row[fee_col!]);
       const fee_val = !isNaN(fee_num) ? String(Math.round(fee_num * 100) / 100) : "0";
       
+      // 检查当前用户数据库中的状态
+      let statusInDb = '无';
+      for (const item of current_data) {
+        if (String(item.code).trim() === code_str && (item.owner || 'fenggao') === currentUser) {
+          statusInDb = item.status || '在售';
+          break;
+        }
+      }
+      
       preview_list.push({
         code: code_str,
         name: name_val,
         category: cate_val,
         weight: weight_val,
         price: price_val,
-        fee: fee_val
+        fee: fee_val,
+        statusInDb: statusInDb
       });
     }
     
@@ -310,6 +323,7 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
 app.post('/api/confirm_save', requires_auth, async (req, res) => {
   const currentUser = get_current_user(req);
   const new_items: any[] = req.body.data || [];
+  const mode = req.body.mode || 'all'; // 'new' | 'modify' | 'all'
   const current_data = loadData(DATA_FILE);
   
   const user_item_map: Record<string, number> = {};
@@ -317,6 +331,37 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
     const item = current_data[i];
     if ((item.owner || 'fenggao') === currentUser) {
       user_item_map[String(item.code).trim()] = i;
+    }
+  }
+  
+  // 安全性校验
+  if (mode === 'new') {
+    const duplicates: string[] = [];
+    for (const item of new_items) {
+      const code_str = String(item.code).trim();
+      if (code_str in user_item_map) {
+        duplicates.push(code_str);
+      }
+    }
+    if (duplicates.length > 0) {
+      return res.json({ 
+        success: false, 
+        msg: `⚠️ 录入失败：以下条码已存在于您的数据库中，新货入库模式下禁止覆盖！\n${duplicates.slice(0, 10).join('、')}${duplicates.length > 10 ? '...' : ''}\n请修改条码，或使用“旧货修改”功能。`
+      });
+    }
+  } else if (mode === 'modify') {
+    const not_found: string[] = [];
+    for (const item of new_items) {
+      const code_str = String(item.code).trim();
+      if (!(code_str in user_item_map)) {
+        not_found.push(code_str);
+      }
+    }
+    if (not_found.length > 0) {
+      return res.json({ 
+        success: false, 
+        msg: `⚠️ 修改失败：以下条码在您的数据库中不存在，旧货修改模式下禁止新增！\n${not_found.slice(0, 10).join('、')}${not_found.length > 10 ? '...' : ''}\n请先核对或使用“新货入库”功能。`
+      });
     }
   }
   
@@ -356,10 +401,10 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
     }
   }
   
-  const commit_msg = `🔄 批量入库同步：新增 ${added_count} 件，更新 ${updated_count} 件，跳过已售货品 ${skipped_sold_count} 件 (账户: ${currentUser})`;
+  const commit_msg = `🔄 批量入库同步[模式:${mode}]：新增 ${added_count} 件，更新 ${updated_count} 件，跳过已售货品 ${skipped_sold_count} 件 (账户: ${currentUser})`;
   await saveData(current_data, DATA_FILE, commit_msg);
   
-  let msg_details = `🎉 入库处理完毕！\n➕ 成功上架新品：${added_count} 件\n🔄 覆盖更新旧货：${updated_count} 件`;
+  let msg_details = `🎉 处理完毕！\n➕ 成功录入上架新品：${added_count} 件\n🔄 覆盖修改更新旧货：${updated_count} 件`;
   if (skipped_sold_count > 0) {
     msg_details += `\n⚠️ 自动跳过已售出历史条码：${skipped_sold_count} 件（已锁定保护）`;
   }
