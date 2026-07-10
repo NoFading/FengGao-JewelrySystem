@@ -48,9 +48,18 @@ function loadData(filepath: string = DATA_FILE): any[] {
 
 async function saveData(data: any, filepath: string = DATA_FILE, commitMsg: string = "🔄 数据同步") {
   const contentStr = JSON.stringify(data, null, 4);
+  
+  let originalContent: string | null = null;
+  if (fs.existsSync(filepath)) {
+    originalContent = fs.readFileSync(filepath, 'utf-8');
+  }
+
   fs.writeFileSync(filepath, contentStr, 'utf-8');
   
-  if (!GH_TOKEN || !GH_REPO) return;
+  if (!GH_TOKEN || !GH_REPO) {
+    console.warn("⚠️ 警告: GitHub 环境变量未配置，数据仅保存在本地临时存储中！");
+    return;
+  }
   
   try {
     const filename = path.basename(filepath);
@@ -67,9 +76,13 @@ async function saveData(data: any, filepath: string = DATA_FILE, commitMsg: stri
       if (getResp.ok) {
         const getJson: any = await getResp.json();
         sha = getJson.sha;
+      } else if (getResp.status === 401) {
+        throw new Error("GitHub 授权失败 (401 Bad credentials)，请检查 GitHub 令牌配置。");
       }
-    } catch (e) {
-      // Ignore reading error if file doesn't exist on git repo yet
+    } catch (e: any) {
+      if (e.message && e.message.includes("401")) {
+        throw e;
+      }
     }
     
     const putData: any = {
@@ -94,10 +107,20 @@ async function saveData(data: any, filepath: string = DATA_FILE, commitMsg: stri
       console.log(`${filename} 同步到 GitHub 成功`);
     } else {
       const errText = await putResp.text();
-      console.error(`${filename} 同步到 GitHub 失败:`, errText);
+      let parsedErr: any = null;
+      try { parsedErr = JSON.parse(errText); } catch (_) {}
+      const errorDetail = parsedErr?.message || errText;
+      throw new Error(`同步到 GitHub 失败: ${errorDetail}`);
     }
   } catch (e: any) {
-    console.error(`GitHub 同步网络错误:`, e.message);
+    // 回滚本地文件，确保数据一致性
+    if (originalContent !== null) {
+      fs.writeFileSync(filepath, originalContent, 'utf-8');
+    } else {
+      try { fs.unlinkSync(filepath); } catch (_) {}
+    }
+    console.error(`GitHub 同步失败，已回滚本地文件:`, e.message);
+    throw new Error(`🚫 GitHub 同步失败 (${e.message})。为了数据安全，本次操作已被拦截和回滚。`);
   }
 }
 
@@ -402,15 +425,19 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
     }
   }
   
-  const commit_msg = `🔄 批量入库同步[模式:${mode}]：新增 ${added_count} 件，更新 ${updated_count} 件，跳过已售货品 ${skipped_sold_count} 件 (账户: ${currentUser})`;
-  await saveData(current_data, DATA_FILE, commit_msg);
-  
-  let msg_details = `🎉 处理完毕！\n➕ 成功录入上架新品：${added_count} 件\n🔄 覆盖修改更新旧货：${updated_count} 件`;
-  if (skipped_sold_count > 0) {
-    msg_details += `\n⚠️ 自动跳过已售出历史条码：${skipped_sold_count} 件（已锁定保护）`;
+  try {
+    const commit_msg = `🔄 批量入库同步[模式:${mode}]：新增 ${added_count} 件，更新 ${updated_count} 件，跳过已售货品 ${skipped_sold_count} 件 (账户: ${currentUser})`;
+    await saveData(current_data, DATA_FILE, commit_msg);
+    
+    let msg_details = `🎉 处理完毕！\n➕ 成功录入上架新品：${added_count} 件\n🔄 覆盖修改更新旧货：${updated_count} 件`;
+    if (skipped_sold_count > 0) {
+      msg_details += `\n⚠️ 自动跳过已售出历史条码：${skipped_sold_count} 件（已锁定保护）`;
+    }
+    
+    res.json({ success: true, msg: msg_details });
+  } catch (error: any) {
+    res.json({ success: false, msg: error.message || '保存失败' });
   }
-  
-  res.json({ success: true, msg: msg_details });
 });
 
 app.post('/api/checkout', requires_auth, async (req, res) => {
@@ -435,8 +462,12 @@ app.post('/api/checkout', requires_auth, async (req, res) => {
   }
   
   if (found) {
-    await saveData(current_data, DATA_FILE, `🛍 账户(${currentUser})货品 ${code} 售出记账`);
-    res.json({ success: true, msg: '🛍 销售成功！' });
+    try {
+      await saveData(current_data, DATA_FILE, `🛍 账户(${currentUser})货品 ${code} 售出记账`);
+      res.json({ success: true, msg: '🛍 销售成功！' });
+    } catch (error: any) {
+      res.json({ success: false, msg: error.message || '销售记账失败' });
+    }
   } else {
     res.json({ success: false, msg: '❌ 未找到属于您的此货品' });
   }
@@ -462,8 +493,12 @@ app.post('/api/return_item', requires_auth, async (req, res) => {
   }
   
   if (found) {
-    await saveData(current_data, DATA_FILE, `🔄 账户(${currentUser})货品 ${code} 退货核销`);
-    res.json({ success: true, msg: '🔄 退货核销成功！' });
+    try {
+      await saveData(current_data, DATA_FILE, `🔄 账户(${currentUser})货品 ${code} 退货核销`);
+      res.json({ success: true, msg: '🔄 退货核销成功！' });
+    } catch (error: any) {
+      res.json({ success: false, msg: error.message || '退货核销失败' });
+    }
   } else {
     res.json({ success: false, msg: '❌ 未找到记录' });
   }
@@ -478,8 +513,12 @@ app.post('/api/stocktake/submit', requires_auth, async (req, res) => {
   const history = loadData(STOCKTAKE_FILE);
   history.push(report);
   
-  await saveData(history, STOCKTAKE_FILE, `📋 账户(${currentUser})上传盘点报告`);
-  res.json({ success: true, msg: '🏁 盘点报告已成功上传！' });
+  try {
+    await saveData(history, STOCKTAKE_FILE, `📋 账户(${currentUser})上传盘点报告`);
+    res.json({ success: true, msg: '🏁 盘点报告已成功上传！' });
+  } catch (error: any) {
+    res.json({ success: false, msg: error.message || '盘点报告上传失败' });
+  }
 });
 
 app.get('/api/stocktake/history', requires_auth, async (req, res) => {
