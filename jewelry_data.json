@@ -6828,5 +6828,15 @@
         "owner": "fenggao",
         "sold_date": "2026-07-12",
         "sold_price": "30024"
+    },
+    {
+        "code": "260707028935",
+        "name": "足金挂坠",
+        "category": "吊坠",
+        "weight": "2.223",
+        "price": "4001",
+        "fee": "0",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
