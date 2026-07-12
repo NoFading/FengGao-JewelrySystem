@@ -6838,5 +6838,15 @@
         "fee": "0",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260707029035",
+        "name": "足金挂坠",
+        "category": "吊坠",
+        "weight": "3.812",
+        "price": "6861",
+        "fee": "0",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
