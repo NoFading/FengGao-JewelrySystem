@@ -6784,5 +6784,15 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260707028435",
+        "name": "足金项链",
+        "category": "黄金",
+        "weight": "2.361",
+        "price": "4250",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
