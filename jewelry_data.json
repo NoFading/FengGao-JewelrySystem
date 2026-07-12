@@ -6796,5 +6796,15 @@
         "owner": "fenggao",
         "sold_date": "2026-07-12",
         "sold_price": "3400"
+    },
+    {
+        "code": "260707028335",
+        "name": "足金项链",
+        "category": "项链",
+        "weight": "2.66",
+        "price": "4788",
+        "fee": "0",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
