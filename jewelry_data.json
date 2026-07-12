@@ -6868,5 +6868,15 @@
         "fee": "0",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260707029635",
+        "name": "足金戒指",
+        "category": "戒指",
+        "weight": "3.256",
+        "price": "5860",
+        "fee": "0",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
