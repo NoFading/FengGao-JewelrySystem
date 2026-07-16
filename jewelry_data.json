@@ -11546,7 +11546,9 @@
         "weight": "1.883",
         "price": "3389",
         "fee": "88",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-07-16",
+        "sold_price": "171"
     }
 ]
