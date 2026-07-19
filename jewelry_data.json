@@ -3814,8 +3814,10 @@
         "weight": "5.057",
         "price": "9100",
         "fee": "120",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-07-19",
+        "sold_price": "4950"
     },
     {
         "code": "260707398",
