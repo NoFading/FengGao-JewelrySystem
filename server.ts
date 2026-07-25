@@ -273,6 +273,7 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
     let name_col: string | null = null;
     let cate_col: string | null = null;
     let weight_col: string | null = null;
+    let mate_col: string | null = null;
     let price_col: string | null = null;
     let fee_col: string | null = null;
     
@@ -282,6 +283,7 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
       else if (['货品名称', '名称', '款式', 'name'].some(k => low_col.includes(k))) name_col = col;
       else if (['品类', '类型', '分类', 'category'].some(k => low_col.includes(k))) cate_col = col;
       else if (['克重', '金重', '重量', 'weight'].some(k => low_col.includes(k))) weight_col = col;
+      else if (['成分', '材质', '成色', '含金量', '纯度', '质地', 'material', 'purity'].some(k => low_col.includes(k))) mate_col = col;
       else if (['标价', '标签价', '售价', 'price'].some(k => low_col.includes(k))) price_col = col;
       else if (['工费', '手艺费', '加工费', 'fee'].some(k => low_col.includes(k))) fee_col = col;
     }
@@ -291,6 +293,7 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
     if (!name_col) missing_cols.push("【货品名称】");
     if (!cate_col) missing_cols.push("【品类】");
     if (!weight_col) missing_cols.push("【金重】");
+    if (!mate_col) missing_cols.push("【成分】");
     if (!price_col) missing_cols.push("【标价】");
     if (!fee_col) missing_cols.push("【工费】");
     
@@ -311,6 +314,8 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
       const weight_num = parseFloat(row[weight_col!]);
       const weight_val = !isNaN(weight_num) ? String(Math.round(weight_num * 1000) / 1000) : "0";
       
+      const mate_val = (mate_col && row[mate_col!] !== undefined && row[mate_col!] !== null) ? String(row[mate_col!]).trim() : "足金999";
+
       const price_num = parseFloat(row[price_col!]);
       const price_val = !isNaN(price_num) ? String(Math.round(price_num * 100) / 100) : "0";
       
@@ -331,6 +336,7 @@ app.post('/api/parse_preview', requires_auth, upload.single('file'), (req, res) 
         name: name_val,
         category: cate_val,
         weight: weight_val,
+        material: mate_val || '足金999',
         price: price_val,
         fee: fee_val,
         statusInDb: statusInDb
@@ -405,6 +411,9 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
       current_data[idx].name = item.name;
       current_data[idx].category = item.category;
       current_data[idx].weight = item.weight;
+      if (item.material) {
+        current_data[idx].material = item.material;
+      }
       current_data[idx].price = item.price;
       current_data[idx].fee = item.fee;
       current_data[idx].code = code_str;
@@ -415,6 +424,7 @@ app.post('/api/confirm_save', requires_auth, async (req, res) => {
         name: item.name,
         category: item.category,
         weight: item.weight,
+        material: item.material || '足金999',
         price: item.price,
         fee: item.fee,
         status: "在售",
