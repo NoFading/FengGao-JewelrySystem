@@ -14242,5 +14242,49 @@
         "owner": "fenggao",
         "sold_date": "2026-07-25",
         "sold_price": "873"
+    },
+    {
+        "code": "260725001",
+        "name": "足金戒指",
+        "category": "戒指",
+        "weight": "0.91",
+        "material": "足金999",
+        "price": "1638",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "260725002",
+        "name": "足金耳环",
+        "category": "耳饰",
+        "weight": "1.525",
+        "material": "足金999",
+        "price": "2745",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "260725003",
+        "name": "足金耳环",
+        "category": "耳环",
+        "weight": "3.607",
+        "material": "足金999",
+        "price": "6492",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "260724001",
+        "name": "足金戒指",
+        "category": "戒指",
+        "weight": "4.943",
+        "material": "足金999",
+        "price": "8897",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
