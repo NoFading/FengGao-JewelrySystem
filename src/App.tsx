@@ -1248,12 +1248,34 @@ export default function App() {
               {/* Method Content 1: Excel Batch Import */}
               {inputMethod === 'excel' && (
                 <div className="space-y-3 animate-fadeIn">
+                  {/* Standard Template Download Card */}
+                  <div className="bg-emerald-50/90 border border-emerald-200 p-3 rounded-xl text-[11px] text-emerald-950 leading-relaxed font-medium space-y-2 shadow-2xs">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 font-extrabold text-[12px] text-emerald-900">
+                        <span className="text-sm">📥</span>
+                        <span>官方标准 Excel 导入模板</span>
+                      </div>
+                      <a 
+                        href="/api/download-template" 
+                        download="批量入库模板.xlsx"
+                        className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-sm transition-all active:scale-95 border border-emerald-500"
+                        title="点击下载包含标准7核心表头的 Excel 文件"
+                      >
+                        <span>⬇️</span>
+                        <span>下载标准模板文件 (.xlsx)</span>
+                      </a>
+                    </div>
+                    <p className="text-emerald-800 text-[10.5px] leading-normal font-normal">
+                      💡 <b>操作提醒</b>：请务必先下载上方模板并严格按格式填写入库商品，以保障列标题和数据能够被系统精准无误解析。
+                    </p>
+                  </div>
+
                   <div className="bg-rose-50 border border-rose-200/60 p-3 rounded-xl text-[11px] text-rose-900 leading-relaxed font-medium space-y-1">
                     <span className="font-extrabold text-[12px] text-rose-700 flex items-center gap-1.5 mb-1.5">
-                      ⚠️ 批量导入 Excel 严格规范说明:
+                      ⚠️ 批量导入 Excel 核心规范列:
                     </span>
                     <p>
-                      表格首行<b>必须完整包含以下 7 核心标题</b> (顺序可不限, 列字不能错):
+                      表格首行<b>必须完整包含以下 7 核心标题</b> (顺序可不限):
                     </p>
                     <div className="flex flex-wrap gap-1 py-1">
                       {['条码', '货品名称', '品类', '金重', '成分', '标价', '工费'].map((item, idx) => (
@@ -1263,7 +1285,7 @@ export default function App() {
                       ))}
                     </div>
                     <p className="text-slate-500 text-[10px] mt-1 font-normal">
-                      💡 提示：系统支持模糊匹配这些列标题，导入时会自动比对数据库进行防重、防错校验。兼容未包含【成分】的历史旧数据。
+                      💡 提示：系统支持自动匹配列标题并防重、防错校验。兼容未包含【成分】的历史旧数据。
                     </p>
                   </div>
 
