@@ -780,11 +780,26 @@ export default function App() {
   const getPagedData = (data: any[], type: 'inventory' | 'sold' | 'today') => {
     const config = paginations[type];
     
-    // Sort logic if needed, otherwise filter first
     let filtered = data;
+
+    // Default sort by sold_date descending (latest sales at the top)
+    if (type === 'sold' || type === 'today') {
+      const indexed = filtered.map((item, index) => ({ item, index }));
+      indexed.sort((a, b) => {
+        const dateA = String(a.item.sold_date || '');
+        const dateB = String(b.item.sold_date || '');
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        // If dates are identical or empty, sort by original array index descending (latest added/sold first)
+        return b.index - a.index;
+      });
+      filtered = indexed.map(x => x.item);
+    }
+
     if (type === 'inventory' && searchInventoryHost.trim()) {
       const q = searchInventoryHost.trim().toLowerCase();
-      filtered = data.filter(i => 
+      filtered = filtered.filter(i => 
         String(i.code).toLowerCase().includes(q) || 
         String(i.name).toLowerCase().includes(q) || 
         String(i.category).toLowerCase().includes(q) ||
@@ -792,7 +807,7 @@ export default function App() {
       );
     } else if (type === 'sold' && searchSoldHost.trim()) {
       const q = searchSoldHost.trim().toLowerCase();
-      filtered = data.filter(i => 
+      filtered = filtered.filter(i => 
         String(i.code).toLowerCase().includes(q) || 
         String(i.name).toLowerCase().includes(q) || 
         String(i.category).toLowerCase().includes(q) ||
