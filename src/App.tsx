@@ -26,6 +26,7 @@ interface JewelryItem {
   name: string;
   category: string;
   weight: string;
+  material?: string;
   price?: string;
   fee?: string;
   tag_price?: string;
@@ -97,6 +98,7 @@ export default function App() {
   const [manualName, setManualName] = useState('');
   const [manualCategory, setManualCategory] = useState('黄金');
   const [manualWeight, setManualWeight] = useState('');
+  const [manualMaterial, setManualMaterial] = useState('足金999');
   const [manualPrice, setManualPrice] = useState('');
   const [manualFee, setManualFee] = useState('');
   const [manualCheckStatus, setManualCheckStatus] = useState<{ type: 'success' | 'warn' | 'error'; msg: string } | null>(null);
@@ -502,6 +504,7 @@ export default function App() {
         setManualName(existsInActive.name || '');
         setManualCategory(existsInActive.category || '黄金');
         setManualWeight(existsInActive.weight || '');
+        setManualMaterial(existsInActive.material || '足金999');
         setManualPrice(existsInActive.price || '');
         setManualFee(existsInActive.fee || '');
       } else if (existsInSold) {
@@ -524,6 +527,7 @@ export default function App() {
     const name = manualName.trim();
     const category = manualCategory.trim();
     const weight = manualWeight.trim();
+    const material = manualMaterial.trim();
     const price = manualPrice.trim();
     const fee = manualFee.trim();
 
@@ -537,6 +541,10 @@ export default function App() {
     }
     if (!category) {
       alert('请选择品类！');
+      return;
+    }
+    if (!material) {
+      alert('请输入或选择成分！');
       return;
     }
 
@@ -565,6 +573,7 @@ export default function App() {
       name,
       category,
       weight: weight || '0',
+      material,
       price: price || '0',
       fee: fee || '0'
     }];
@@ -582,6 +591,7 @@ export default function App() {
         setManualCode('');
         setManualName('');
         setManualWeight('');
+        setManualMaterial('足金999');
         setManualPrice('');
         setManualFee('');
         setManualCheckStatus(null);
@@ -596,6 +606,7 @@ export default function App() {
     setManualCode('');
     setManualName('');
     setManualWeight('');
+    setManualMaterial('足金999');
     setManualPrice('');
     setManualFee('');
     setManualCheckStatus(null);
@@ -776,16 +787,23 @@ export default function App() {
       filtered = data.filter(i => 
         String(i.code).toLowerCase().includes(q) || 
         String(i.name).toLowerCase().includes(q) || 
-        String(i.category).toLowerCase().includes(q)
+        String(i.category).toLowerCase().includes(q) ||
+        String(i.material || '').toLowerCase().includes(q)
       );
     } else if (type === 'sold' && searchSoldHost.trim()) {
       const q = searchSoldHost.trim().toLowerCase();
       filtered = data.filter(i => 
         String(i.code).toLowerCase().includes(q) || 
         String(i.name).toLowerCase().includes(q) || 
-        String(i.category).toLowerCase().includes(q)
+        String(i.category).toLowerCase().includes(q) ||
+        String(i.material || '').toLowerCase().includes(q)
       );
     }
+
+    const totalWeight = filtered.reduce((sum, item) => {
+      const w = parseFloat(String(item.weight || 0));
+      return sum + (isNaN(w) ? 0 : w);
+    }, 0);
 
     const totalPages = Math.ceil(filtered.length / config.size) || 1;
     const current = Math.min(config.current, totalPages);
@@ -796,7 +814,8 @@ export default function App() {
       items: filtered.slice(start, end),
       current,
       totalPages,
-      totalCount: filtered.length
+      totalCount: filtered.length,
+      totalWeight: Math.round(totalWeight * 1000) / 1000
     };
   };
 
@@ -1219,17 +1238,17 @@ export default function App() {
                       ⚠️ 批量导入 Excel 严格规范说明:
                     </span>
                     <p>
-                      表格首行<b>必须完整包含以下 6 核心标题</b> (顺序可不限, 列字不能错):
+                      表格首行<b>必须完整包含以下 7 核心标题</b> (顺序可不限, 列字不能错):
                     </p>
                     <div className="flex flex-wrap gap-1 py-1">
-                      {['条码', '货品名称', '品类', '金重', '标价', '工费'].map((item, idx) => (
+                      {['条码', '货品名称', '品类', '金重', '成分', '标价', '工费'].map((item, idx) => (
                         <span key={idx} className="bg-white border border-rose-300 text-rose-700 px-1.5 py-0.5 rounded font-extrabold text-[10px]">
                           {item}
                         </span>
                       ))}
                     </div>
                     <p className="text-slate-500 text-[10px] mt-1 font-normal">
-                      💡 提示：系统支持模糊匹配这些列标题，导入时会自动比对数据库进行防重、防错校验。
+                      💡 提示：系统支持模糊匹配这些列标题，导入时会自动比对数据库进行防重、防错校验。兼容未包含【成分】的历史旧数据。
                     </p>
                   </div>
 
@@ -1340,10 +1359,41 @@ export default function App() {
                       </div>
                     </div>
 
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                        4. 成分 (材质 / 纯度)
+                      </label>
+                      <input 
+                        type="text" 
+                        value={manualMaterial}
+                        onChange={(e) => setManualMaterial(e.target.value)}
+                        placeholder="例：足金999、足金9999、18K金"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 select-text text-slate-800 font-bold"
+                        required
+                      />
+                      {/* Quick select buttons for material */}
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {['足金999', '足金9999', '18K金', 'Pt950', '24K金', '足银999'].map((mat) => (
+                          <button
+                            key={mat}
+                            type="button"
+                            onClick={() => setManualMaterial(mat)}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all border ${
+                              manualMaterial === mat
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {mat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                          4. 金重 (克 g)
+                          5. 金重 (克 g)
                         </label>
                         <input 
                           type="number" 
@@ -1357,7 +1407,7 @@ export default function App() {
 
                       <div>
                         <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                          5. 标签标价 (元)
+                          6. 标签标价 (元)
                         </label>
                         <input 
                           type="number" 
@@ -1371,7 +1421,7 @@ export default function App() {
 
                       <div>
                         <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                          6. 克工费 (元)
+                          7. 克工费 (元)
                         </label>
                         <input 
                           type="number" 
@@ -1629,6 +1679,7 @@ export default function App() {
                         <th className="p-2 font-bold">货品名称</th>
                         <th className="p-2 font-bold">品类</th>
                         <th className="p-2 font-bold">金重</th>
+                        <th className="p-2 font-bold">成分</th>
                         <th className="p-2 font-bold">标签标价</th>
                         <th className="p-2 font-bold">工费</th>
                         <th className="p-2 font-bold">校验状态</th>
@@ -1649,6 +1700,7 @@ export default function App() {
                               </span>
                             </td>
                             <td className="p-2 text-slate-500">{item.weight}g</td>
+                            <td className="p-2 text-slate-700 font-medium">{item.material || '-'}</td>
                             <td className="p-2 text-slate-700">¥{item.price}</td>
                             <td className="p-2 text-slate-400">¥{item.fee}</td>
                             <td className="p-2">
@@ -1763,19 +1815,39 @@ export default function App() {
                   value={searchInventoryHost}
                   onChange={(e) => { setSearchInventoryHost(e.target.value); setPaginations(prev => ({ ...prev, inventory: { ...prev.inventory, current: 1 } })); }}
                   id="inventorySearchInput"
-                  placeholder="⚡ 输入条码、货名或品类实时过滤..."
+                  placeholder="⚡ 输入条码、货名、成分或品类实时过滤..."
                   className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border-2 border-emerald-500 rounded-xl focus:outline-none placeholder:text-slate-300 font-medium select-text"
                 />
               </div>
 
+              {/* Dynamic Filtered Summary Card */}
+              <div className="flex items-center justify-between text-xs bg-emerald-50/80 border border-emerald-200/60 p-2.5 rounded-xl font-medium text-emerald-900 shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-emerald-800 flex items-center gap-1">
+                    <span>📊</span>
+                    <span>{searchInventoryHost.trim() ? '过滤后在售资产' : '当前在售总计'}：</span>
+                  </span>
+                  <span className="bg-emerald-100/80 text-emerald-900 font-bold px-2 py-0.5 rounded-md text-[11px]">
+                    {inventoryPaged.totalCount} 件
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-600 font-semibold">总金重：</span>
+                  <span className="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs font-mono">
+                    {inventoryPaged.totalWeight.toFixed(3)} g
+                  </span>
+                </div>
+              </div>
+
               <div className="overflow-x-auto border border-slate-100 rounded-xl">
-                <table className="w-full min-w-[650px] text-left text-xs border-collapse whitespace-nowrap">
+                <table className="w-full min-w-[680px] text-left text-xs border-collapse whitespace-nowrap">
                   <thead>
                     <tr className="bg-slate-50 text-slate-600 border-b border-slate-100">
                       <th className="p-2.5 font-bold">条码</th>
                       <th className="p-2.5 font-bold">货品名称</th>
                       <th className="p-2.5 font-bold">品类</th>
                       <th className="p-2.5 font-bold">金重</th>
+                      <th className="p-2.5 font-bold text-amber-800">成分</th>
                       <th className="p-2.5 font-bold">标价</th>
                       <th className="p-2.5 font-bold">工费</th>
                       <th className="p-2.5 font-bold text-emerald-600">状态</th>
@@ -1784,7 +1856,7 @@ export default function App() {
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {inventoryPaged.items.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-4 text-center text-slate-400">
+                        <td colSpan={8} className="p-4 text-center text-slate-400">
                           🔍 未找到相关匹配存货记录
                         </td>
                       </tr>
@@ -1798,7 +1870,16 @@ export default function App() {
                               {item.category}
                             </span>
                           </td>
-                          <td className="p-2.5 text-slate-500">{item.weight}g</td>
+                          <td className="p-2.5 text-slate-600 font-semibold">{item.weight}g</td>
+                          <td className="p-2.5 text-slate-700 font-bold">
+                            {item.material ? (
+                              <span className="bg-amber-50 text-amber-900 border border-amber-200/60 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                                {item.material}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            )}
+                          </td>
                           <td className="p-2.5 text-slate-755 font-bold">{item.price ? `¥${item.price}` : '-'}</td>
                           <td className="p-2.5 text-slate-400">{item.fee ? `¥${item.fee}` : '-'}</td>
                           <td className="p-2.5 text-emerald-500 font-bold">在售</td>
@@ -1813,7 +1894,10 @@ export default function App() {
               {inventoryPaged.totalCount > 0 && (
                 <div className="flex flex-col gap-2.5 text-xs text-slate-500 select-none border-t border-slate-100 pt-3" id="pagerInventory">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="font-medium text-slate-600">在售共 {inventoryPaged.totalCount} 件商品</span>
+                    <span className="font-medium text-slate-600">
+                      在售共 <strong className="text-emerald-700 font-bold">{inventoryPaged.totalCount}</strong> 件商品 | 
+                      总金重 <strong className="text-emerald-700 font-bold">{inventoryPaged.totalWeight.toFixed(3)}g</strong>
+                    </span>
                     
                     {/* Size Selector */}
                     <div className="flex items-center gap-1.5">
@@ -1885,13 +1969,14 @@ export default function App() {
               </div>
 
               <div className="overflow-x-auto border border-slate-100 rounded-xl">
-                <table className="w-full min-w-[680px] text-left text-xs border-collapse whitespace-nowrap">
+                <table className="w-full min-w-[700px] text-left text-xs border-collapse whitespace-nowrap">
                   <thead>
                     <tr className="bg-orange-50 text-orange-950 border-b border-orange-100">
                       <th className="p-2.5 font-bold">条码</th>
                       <th className="p-2.5 font-bold">货品名称</th>
                       <th className="p-2.5 font-bold">品类</th>
                       <th className="p-2.5 font-bold">金重</th>
+                      <th className="p-2.5 font-bold">成分</th>
                       <th className="p-2.5 font-bold">标签价</th>
                       <th className="p-2.5 font-bold text-rose-600">实际售价</th>
                       <th className="p-2.5 font-bold">售出日期</th>
@@ -1900,7 +1985,7 @@ export default function App() {
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {soldPaged.items.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-4 text-center text-slate-400">
+                        <td colSpan={8} className="p-4 text-center text-slate-400">
                           🔍 未找到相关历史售出记录
                         </td>
                       </tr>
@@ -1915,6 +2000,7 @@ export default function App() {
                             </span>
                           </td>
                           <td className="p-2.5 text-slate-400">{item.weight}g</td>
+                          <td className="p-2.5 text-slate-500">{item.material || '-'}</td>
                           <td className="p-2.5 text-slate-400">{item.price ? `¥${item.price}` : '-'}</td>
                           <td className="p-2.5 text-rose-600 font-extrabold text-[13px]">¥{item.sold_price}</td>
                           <td className="p-2.5 text-slate-500">{item.sold_date}</td>
