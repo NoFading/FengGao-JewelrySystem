@@ -538,6 +538,47 @@ app.get('/api/stocktake/history', requires_auth, async (req, res) => {
   res.json(userHistory);
 });
 
+// ================= 📄 Excel 模版服务 =================
+function ensureTemplateExists() {
+  const templateDir = path.join(process.cwd(), 'public', 'templates');
+  if (!fs.existsSync(templateDir)) {
+    fs.mkdirSync(templateDir, { recursive: true });
+  }
+  const templatePath = path.join(templateDir, '批量入库模板.xlsx');
+  if (!fs.existsSync(templatePath)) {
+    try {
+      const sampleData = [
+        ['条码', '货品名称', '品类', '金重', '成分', '标价', '工费'],
+        ['J2026001', '足金复古手镯', '黄金', 18.88, '足金999', 12800, 35],
+        ['J2026002', '18K金珍珠项链', 'K金', 3.52, '18K金', 3600, 0]
+      ];
+      const worksheet = xlsx.utils.aoa_to_sheet(sampleData);
+      const workbook = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(workbook, worksheet, '批量入库模板');
+      xlsx.writeFile(workbook, templatePath);
+      console.log('✅ 标准批量入库 Excel 模板已自动部署在 public/templates/批量入库模板.xlsx');
+    } catch (e) {
+      console.error('生成默认 Excel 模板失败:', e);
+    }
+  }
+}
+
+// 自动初始化确保模板目录及文件存在
+ensureTemplateExists();
+
+// 提供静态下载和下载 API
+app.use('/templates', express.static(path.join(process.cwd(), 'public', 'templates')));
+
+app.get('/api/download-template', (req, res) => {
+  ensureTemplateExists();
+  const templatePath = path.join(process.cwd(), 'public', 'templates', '批量入库模板.xlsx');
+  if (fs.existsSync(templatePath)) {
+    res.download(templatePath, '批量入库模板.xlsx');
+  } else {
+    res.status(404).json({ success: false, msg: '模板文件不存在' });
+  }
+});
+
 // Configure serving frontend static files
 const isProd = process.env.NODE_ENV === 'production';
 if (!isProd) {
