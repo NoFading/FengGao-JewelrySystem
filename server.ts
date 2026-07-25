@@ -228,7 +228,7 @@ app.get('/api/inventory', requires_auth, async (req, res) => {
     const status = item.status || '在售';
     if (status === '已售出') {
       sold_list.push(item);
-      if (item.sold_date === todayStr) {
+      if (item.sold_date && item.sold_date.startsWith(todayStr)) {
         today_sales_list.push(item);
         try {
           const price = parseFloat(item.sold_price || 0);
@@ -464,7 +464,7 @@ app.post('/api/checkout', requires_auth, async (req, res) => {
         return res.json({ success: false, msg: '⚠️ 该货品已售出' });
       }
       item.status = '已售出';
-      item.sold_date = todayStr;
+      item.sold_date = getBjToday();
       item.sold_price = sold_price;
       found = true;
       break;
