@@ -19821,8 +19821,10 @@
         "material": "S925",
         "price": "680",
         "fee": "0",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-08-13 13:25:28",
+        "sold_price": "450"
     },
     {
         "code": "260727TL023",
