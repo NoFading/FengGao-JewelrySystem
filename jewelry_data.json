@@ -16145,10 +16145,8 @@
         "material": "999.9",
         "price": "733.2",
         "fee": "0",
-        "status": "已售出",
-        "owner": "fenggao",
-        "sold_date": "2026-08-15 10:58:07",
-        "sold_price": "500"
+        "status": "在售",
+        "owner": "fenggao"
     },
     {
         "code": "260727SZ167",
