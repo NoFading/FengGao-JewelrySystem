@@ -23278,8 +23278,10 @@
         "material": "999.9",
         "price": "109",
         "fee": "0",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-08-17 13:17:10",
+        "sold_price": "50"
     },
     {
         "code": "260805DZ049",
