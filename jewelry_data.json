@@ -17586,8 +17586,10 @@
         "material": "S925",
         "price": "186",
         "fee": "0",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-08-18 17:56:14",
+        "sold_price": "140"
     },
     {
         "code": "260730XL077",
