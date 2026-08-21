@@ -21114,8 +21114,10 @@
         "material": "S925",
         "price": "280",
         "fee": "0",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-08-21 09:30:55",
+        "sold_price": "30"
     },
     {
         "code": "JZ260731013",
