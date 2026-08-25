@@ -8206,8 +8206,10 @@
         "weight": "0.294",
         "price": "526",
         "fee": "120",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-08-25 11:31:10",
+        "sold_price": "380"
     },
     {
         "code": "260713121",
