@@ -24025,5 +24025,60 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260827XL001",
+        "name": "AU916项链",
+        "category": "项链",
+        "weight": "6.733",
+        "material": "AU916",
+        "price": "12119",
+        "fee": "0",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "260827XL002",
+        "name": "AU917项链",
+        "category": "项链",
+        "weight": "3.868",
+        "material": "AU916",
+        "price": "6962",
+        "fee": "0",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "260827XL003",
+        "name": "足金项链",
+        "category": "项链",
+        "weight": "91.21",
+        "material": "9999",
+        "price": "0",
+        "fee": "88",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "260827EH004",
+        "name": "足金耳环",
+        "category": "耳环",
+        "weight": "3.633",
+        "material": "9999",
+        "price": "6539",
+        "fee": "88",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "260827EH005",
+        "name": "足金耳环",
+        "category": "耳环",
+        "weight": "2.98",
+        "material": "9999",
+        "price": "5364",
+        "fee": "88",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
