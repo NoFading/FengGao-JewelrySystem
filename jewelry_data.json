@@ -20700,8 +20700,10 @@
         "material": "S925",
         "price": "378",
         "fee": "0",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-08-31 10:46:42",
+        "sold_price": "290"
     },
     {
         "code": "260728DZ017",
