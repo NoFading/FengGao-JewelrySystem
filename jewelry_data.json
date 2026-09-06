@@ -4162,10 +4162,8 @@
         "weight": "2.28",
         "price": "4104",
         "fee": "0",
-        "status": "已售出",
-        "owner": "fenggao",
-        "sold_date": "2026-09-06 08:35:30",
-        "sold_price": "4104"
+        "status": "在售",
+        "owner": "fenggao"
     },
     {
         "code": "260707425",
@@ -7574,8 +7572,10 @@
         "weight": "0.318",
         "price": "572",
         "fee": "120",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-09-06 08:35:49",
+        "sold_price": "572"
     },
     {
         "code": "260713051",
