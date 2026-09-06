@@ -2036,21 +2036,11 @@ export default function App() {
                     {inventoryPaged.totalCount} 件
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-600 font-semibold">总金重：</span>
-                    <span className="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs font-mono">
-                      {inventoryPaged.totalWeight.toFixed(3)} g
-                    </span>
-                  </div>
-                  {inventoryPaged.totalCount > 0 && (
-                    <button
-                      onClick={() => handleExportExcel('inventory')}
-                      className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold underline flex items-center gap-0.5"
-                    >
-                      <span>📥 导出 Excel</span>
-                    </button>
-                  )}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-600 font-semibold">总金重：</span>
+                  <span className="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs font-mono">
+                    {inventoryPaged.totalWeight.toFixed(3)} g
+                  </span>
                 </div>
               </div>
 
@@ -2215,21 +2205,11 @@ export default function App() {
                     {soldPaged.totalCount} 件
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-600 font-semibold">实收总额：</span>
-                    <span className="text-xs font-black text-rose-600 bg-white px-2.5 py-1 rounded-lg border border-amber-300/80 shadow-2xs font-mono">
-                      ¥{soldPaged.totalSoldAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  {soldPaged.totalCount > 0 && (
-                    <button
-                      onClick={() => handleExportExcel('sold')}
-                      className="text-[11px] text-amber-800 hover:text-amber-950 font-bold underline flex items-center gap-0.5"
-                    >
-                      <span>📥 导出 Excel</span>
-                    </button>
-                  )}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-600 font-semibold">实收总额：</span>
+                  <span className="text-xs font-black text-rose-600 bg-white px-2.5 py-1 rounded-lg border border-amber-300/80 shadow-2xs font-mono">
+                    ¥{soldPaged.totalSoldAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
 
