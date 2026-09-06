@@ -17,8 +17,11 @@ import {
   HelpCircle,
   Gem,
   Calculator,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Download,
+  X
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface JewelryItem {
@@ -799,26 +802,29 @@ export default function App() {
 
     if (type === 'inventory' && searchInventoryHost.trim()) {
       const q = searchInventoryHost.trim().toLowerCase();
-      filtered = filtered.filter(i => 
-        String(i.code).toLowerCase().includes(q) || 
-        String(i.name).toLowerCase().includes(q) || 
-        String(i.category).toLowerCase().includes(q) ||
-        String(i.material || '').toLowerCase().includes(q)
-      );
+      const tokens = q.split(/[\s,，]+/).filter(Boolean);
+      filtered = filtered.filter(i => {
+        const text = `${i.code || ''} ${i.name || ''} ${i.category || ''} ${i.material || ''} ${i.price || ''} ${i.fee || ''}`.toLowerCase();
+        return tokens.every(token => text.includes(token));
+      });
     } else if (type === 'sold' && searchSoldHost.trim()) {
       const q = searchSoldHost.trim().toLowerCase();
-      filtered = filtered.filter(i => 
-        String(i.code).toLowerCase().includes(q) || 
-        String(i.name).toLowerCase().includes(q) || 
-        String(i.category).toLowerCase().includes(q) ||
-        String(i.material || '').toLowerCase().includes(q)
-      );
+      const tokens = q.split(/[\s,，]+/).filter(Boolean);
+      filtered = filtered.filter(i => {
+        const text = `${i.code || ''} ${i.name || ''} ${i.category || ''} ${i.material || ''} ${i.price || ''} ${i.sold_price || ''} ${i.sold_date || ''}`.toLowerCase();
+        return tokens.every(token => text.includes(token));
+      });
     }
 
     const totalWeight = filtered.reduce((sum, item) => {
       const w = parseFloat(String(item.weight || 0));
       return sum + (isNaN(w) ? 0 : w);
     }, 0);
+
+    const totalSoldAmount = type === 'sold' ? filtered.reduce((sum, item) => {
+      const p = parseFloat(String(item.sold_price || 0));
+      return sum + (isNaN(p) ? 0 : p);
+    }, 0) : 0;
 
     const totalPages = Math.ceil(filtered.length / config.size) || 1;
     const current = Math.min(config.current, totalPages);
@@ -827,10 +833,12 @@ export default function App() {
 
     return {
       items: filtered.slice(start, end),
+      allFiltered: filtered,
       current,
       totalPages,
       totalCount: filtered.length,
-      totalWeight: Math.round(totalWeight * 1000) / 1000
+      totalWeight: Math.round(totalWeight * 1000) / 1000,
+      totalSoldAmount: Math.round(totalSoldAmount * 100) / 100
     };
   };
 
@@ -959,6 +967,133 @@ export default function App() {
   const soldPaged = getPagedData(soldInventory, 'sold');
   const todayPaged = getPagedData(todaySales, 'today');
 
+  // Export Filtered Data to Excel Spreadsheet
+  const handleExportExcel = (type: 'inventory' | 'sold' | 'today') => {
+    let itemsToExport: any[] = [];
+    let title = '';
+    let query = '';
+
+    if (type === 'inventory') {
+      itemsToExport = inventoryPaged.allFiltered || [];
+      title = '在售货品库存';
+      query = searchInventoryHost.trim();
+    } else if (type === 'sold') {
+      itemsToExport = soldPaged.allFiltered || [];
+      title = '已售记录明细';
+      query = searchSoldHost.trim();
+    } else {
+      itemsToExport = todaySales || [];
+      title = '今日卖出明细';
+    }
+
+    if (itemsToExport.length === 0) {
+      alert('⚠️ 当前筛选结果为空，没有可导出的数据！');
+      return;
+    }
+
+    try {
+      const rows = itemsToExport.map((item, idx) => {
+        if (type === 'inventory') {
+          return {
+            '序号': idx + 1,
+            '条码': String(item.code || ''),
+            '货品名称': String(item.name || ''),
+            '品类': String(item.category || ''),
+            '金重(g)': parseFloat(String(item.weight || 0)) || item.weight,
+            '成分': String(item.material || '-'),
+            '标签标价(¥)': item.price ? (parseFloat(String(item.price)) || item.price) : '-',
+            '工费(¥)': item.fee ? (parseFloat(String(item.fee)) || item.fee) : '-',
+            '当前状态': '在售'
+          };
+        } else {
+          return {
+            '序号': idx + 1,
+            '条码': String(item.code || ''),
+            '货品名称': String(item.name || ''),
+            '品类': String(item.category || ''),
+            '金重(g)': parseFloat(String(item.weight || 0)) || item.weight,
+            '成分': String(item.material || '-'),
+            '标签标价(¥)': item.price ? (parseFloat(String(item.price)) || item.price) : '-',
+            '实际售价(¥)': item.sold_price ? (parseFloat(String(item.sold_price)) || item.sold_price) : '-',
+            '售出日期': String(item.sold_date || '-'),
+            '当前状态': '已售出'
+          };
+        }
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+
+      // Auto calculate column widths
+      const colKeys = Object.keys(rows[0] || {});
+      worksheet['!cols'] = colKeys.map(k => {
+        let maxLen = k.length * 2 + 2;
+        rows.forEach(r => {
+          const val = String((r as any)[k] || '');
+          if (val.length > maxLen) maxLen = Math.min(val.length + 3, 30);
+        });
+        return { wch: Math.max(maxLen, 10) };
+      });
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, title.slice(0, 31));
+
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' 
+      });
+
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+      const filterPart = query ? `_筛选[${query.replace(/[/\\?%*:|"<>]/g, '_')}]` : '_全部';
+      const fileName = `${title}${filterPart}_${dateStr}.xlsx`;
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setStocktakeToast({
+        type: 'success',
+        text: 'Excel 导出成功',
+        sub: `已成功导出【${itemsToExport.length}】条${query ? `包含"${query}"的` : ''}数据为 Excel 表格！`
+      });
+      setTimeout(() => setStocktakeToast(null), 4000);
+    } catch (err) {
+      console.error('导出 Excel 错误:', err);
+      alert('导出 Excel 失败，请检查浏览器权限后重试！');
+    }
+  };
+
+  // Robust Template Downloader using Blob (Fixes preview iframe / sandbox download issue)
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await fetch('/api/download-template');
+      if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '批量入库模板.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setStocktakeToast({
+        type: 'success',
+        text: '模板下载成功',
+        sub: '已成功下载官方标准批量入库模板.xlsx'
+      });
+      setTimeout(() => setStocktakeToast(null), 3000);
+    } catch (e) {
+      console.error('模板下载失败:', e);
+      window.location.href = '/api/download-template';
+    }
+  };
+
   return (
     <div id="main-app" className="min-h-screen bg-slate-50 select-none pb-12">
       {/* Floating Stocktake Notification Banner */}
@@ -1025,9 +1160,21 @@ export default function App() {
         {/* Today Sales Ledger Collapse Box */}
         {showTodayDetails && (
           <section id="todayDetailBox" className="bg-white rounded-2xl p-4 border border-rose-100 shadow-sm animate-fadeIn">
-            <div className="flex items-center gap-1.5 border-l-4 border-rose-500 pl-2 mb-3">
-              <ShoppingBag className="w-4 h-4 text-rose-500" />
-              <h2 className="text-sm font-bold text-slate-800">🛍️ 今日卖出商品明细</h2>
+            <div className="flex items-center justify-between border-l-4 border-rose-500 pl-2 mb-3">
+              <div className="flex items-center gap-1.5">
+                <ShoppingBag className="w-4 h-4 text-rose-500" />
+                <h2 className="text-sm font-bold text-slate-800">🛍️ 今日卖出商品明细</h2>
+              </div>
+              {todaySales.length > 0 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleExportExcel('today'); }}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-[11px] font-bold shadow-xs active:scale-95 transition-all"
+                  title="导出今日卖出明细为 Excel"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>导出 Excel ({todaySales.length})</span>
+                </button>
+              )}
             </div>
             
             <div className="overflow-x-auto border border-slate-100 rounded-xl">
@@ -1255,15 +1402,15 @@ export default function App() {
                         <span className="text-sm">📥</span>
                         <span>官方标准 Excel 导入模板</span>
                       </div>
-                      <a 
-                        href="/api/download-template" 
-                        download="批量入库模板.xlsx"
-                        className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-sm transition-all active:scale-95 border border-emerald-500"
+                      <button 
+                        type="button"
+                        onClick={handleDownloadTemplate}
+                        className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-sm transition-all active:scale-95 border border-emerald-500 cursor-pointer"
                         title="点击下载包含标准7核心表头的 Excel 文件"
                       >
-                        <span>⬇️</span>
+                        <Download className="w-3.5 h-3.5" />
                         <span>下载标准模板文件 (.xlsx)</span>
-                      </a>
+                      </button>
                     </div>
                     <p className="text-emerald-800 text-[10.5px] leading-normal font-normal">
                       💡 <b>操作提醒</b>：请务必先下载上方模板并严格按格式填写入库商品，以保障列标题和数据能够被系统精准无误解析。
@@ -1843,18 +1990,39 @@ export default function App() {
           {/* SUB-TAB 1: STORE INVENTORY */}
           {activeViewTab === 'inventory' && (
             <div id="contentView1" className="space-y-3">
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-slate-400">
-                  <Search className="w-4 h-4" />
-                </span>
-                <input 
-                  type="text" 
-                  value={searchInventoryHost}
-                  onChange={(e) => { setSearchInventoryHost(e.target.value); setPaginations(prev => ({ ...prev, inventory: { ...prev.inventory, current: 1 } })); }}
-                  id="inventorySearchInput"
-                  placeholder="⚡ 输入条码、货名、成分或品类实时过滤..."
-                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border-2 border-emerald-500 rounded-xl focus:outline-none placeholder:text-slate-300 font-medium select-text"
-                />
+              {/* Search bar with Download Excel action */}
+              <div className="flex gap-2 items-center">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-2.5 text-slate-400">
+                    <Search className="w-4 h-4" />
+                  </span>
+                  <input 
+                    type="text" 
+                    value={searchInventoryHost}
+                    onChange={(e) => { setSearchInventoryHost(e.target.value); setPaginations(prev => ({ ...prev, inventory: { ...prev.inventory, current: 1 } })); }}
+                    id="inventorySearchInput"
+                    placeholder="⚡ 输入条码、货名、成分或品类实时过滤..."
+                    className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border-2 border-emerald-500 rounded-xl focus:outline-none placeholder:text-slate-400 font-medium select-text"
+                  />
+                  {searchInventoryHost && (
+                    <button 
+                      onClick={() => { setSearchInventoryHost(''); setPaginations(prev => ({ ...prev, inventory: { ...prev.inventory, current: 1 } })); }}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full hover:bg-slate-200"
+                      title="清空搜索"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleExportExcel('inventory')}
+                  disabled={inventoryPaged.totalCount === 0}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0 border border-emerald-500"
+                  title="下载当前筛选后的在售货品为 Excel 表格"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>{searchInventoryHost.trim() ? `下载筛选 (${inventoryPaged.totalCount})` : '下载 Excel'}</span>
+                </button>
               </div>
 
               {/* Dynamic Filtered Summary Card */}
@@ -1862,17 +2030,27 @@ export default function App() {
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-emerald-800 flex items-center gap-1">
                     <span>📊</span>
-                    <span>{searchInventoryHost.trim() ? '过滤后在售资产' : '当前在售总计'}：</span>
+                    <span>{searchInventoryHost.trim() ? `筛选【${searchInventoryHost.trim()}】` : '当前在售总计'}：</span>
                   </span>
                   <span className="bg-emerald-100/80 text-emerald-900 font-bold px-2 py-0.5 rounded-md text-[11px]">
                     {inventoryPaged.totalCount} 件
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-600 font-semibold">总金重：</span>
-                  <span className="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs font-mono">
-                    {inventoryPaged.totalWeight.toFixed(3)} g
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-600 font-semibold">总金重：</span>
+                    <span className="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs font-mono">
+                      {inventoryPaged.totalWeight.toFixed(3)} g
+                    </span>
+                  </div>
+                  {inventoryPaged.totalCount > 0 && (
+                    <button
+                      onClick={() => handleExportExcel('inventory')}
+                      className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold underline flex items-center gap-0.5"
+                    >
+                      <span>📥 导出 Excel</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1991,18 +2169,68 @@ export default function App() {
           {/* SUB-TAB 2: HISTORICAL SOLD LEDGER */}
           {activeViewTab === 'sold' && (
             <div id="contentView2" className="space-y-3">
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-slate-400">
-                  <Search className="w-4 h-4" />
-                </span>
-                <input 
-                  type="text" 
-                  value={searchSoldHost}
-                  onChange={(e) => { setSearchSoldHost(e.target.value); setPaginations(prev => ({ ...prev, sold: { ...prev.sold, current: 1 } })); }}
-                  id="soldSearchInput"
-                  placeholder="⚡ 闪电查历史老账..."
-                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border-2 border-amber-500 rounded-xl focus:outline-none placeholder:text-slate-300 font-medium select-text"
-                />
+              {/* Search bar with Download Excel action */}
+              <div className="flex gap-2 items-center">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-2.5 text-slate-400">
+                    <Search className="w-4 h-4" />
+                  </span>
+                  <input 
+                    type="text" 
+                    value={searchSoldHost}
+                    onChange={(e) => { setSearchSoldHost(e.target.value); setPaginations(prev => ({ ...prev, sold: { ...prev.sold, current: 1 } })); }}
+                    id="soldSearchInput"
+                    placeholder="⚡ 闪电查历史老账 (条码/货名/成分/日期)..."
+                    className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border-2 border-amber-500 rounded-xl focus:outline-none placeholder:text-slate-400 font-medium select-text"
+                  />
+                  {searchSoldHost && (
+                    <button 
+                      onClick={() => { setSearchSoldHost(''); setPaginations(prev => ({ ...prev, sold: { ...prev.sold, current: 1 } })); }}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full hover:bg-slate-200"
+                      title="清空搜索"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleExportExcel('sold')}
+                  disabled={soldPaged.totalCount === 0}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0 border border-amber-500"
+                  title="下载当前筛选后的已售记录为 Excel 表格"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>{searchSoldHost.trim() ? `下载筛选 (${soldPaged.totalCount})` : '下载 Excel'}</span>
+                </button>
+              </div>
+
+              {/* Dynamic Filtered Summary Card for Sold */}
+              <div className="flex items-center justify-between text-xs bg-amber-50/80 border border-amber-200/60 p-2.5 rounded-xl font-medium text-amber-900 shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-amber-800 flex items-center gap-1">
+                    <span>📊</span>
+                    <span>{searchSoldHost.trim() ? `已售筛选【${searchSoldHost.trim()}】` : '当前已售总计'}：</span>
+                  </span>
+                  <span className="bg-amber-100/80 text-amber-900 font-bold px-2 py-0.5 rounded-md text-[11px]">
+                    {soldPaged.totalCount} 件
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-600 font-semibold">实收总额：</span>
+                    <span className="text-xs font-black text-rose-600 bg-white px-2.5 py-1 rounded-lg border border-amber-300/80 shadow-2xs font-mono">
+                      ¥{soldPaged.totalSoldAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  {soldPaged.totalCount > 0 && (
+                    <button
+                      onClick={() => handleExportExcel('sold')}
+                      className="text-[11px] text-amber-800 hover:text-amber-950 font-bold underline flex items-center gap-0.5"
+                    >
+                      <span>📥 导出 Excel</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="overflow-x-auto border border-slate-100 rounded-xl">
