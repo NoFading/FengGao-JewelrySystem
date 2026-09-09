@@ -17924,8 +17924,10 @@
         "material": "S999",
         "price": "822",
         "fee": "0",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-09-09 08:39:53",
+        "sold_price": "513"
     },
     {
         "code": "260729SZ015",
