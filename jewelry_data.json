@@ -26433,5 +26433,27 @@
         "fee": "0",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260915001EH",
+        "name": "足金耳环",
+        "category": "耳环",
+        "weight": "0.582",
+        "material": "AU9999",
+        "price": "1047",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "260915002SC",
+        "name": "足金手串",
+        "category": "手串",
+        "weight": "3.08",
+        "material": "足金999",
+        "price": "0",
+        "fee": "0",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
