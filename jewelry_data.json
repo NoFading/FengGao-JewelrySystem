@@ -27479,5 +27479,16 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260911004EH",
+        "name": "足金耳环",
+        "category": "耳环",
+        "weight": "3.06",
+        "material": "足金9999",
+        "price": "5508",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
