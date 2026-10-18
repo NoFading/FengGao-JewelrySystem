@@ -25513,8 +25513,10 @@
         "material": "AU9999",
         "price": "0",
         "fee": "88",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-10-18 15:35:38",
+        "sold_price": "0"
     },
     {
         "code": "260827EH004",
