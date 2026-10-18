@@ -15772,11 +15772,11 @@
     },
     {
         "code": "260725001",
-        "name": "足金戒指",
-        "category": "戒指",
-        "weight": "0.91",
-        "material": "AU9999",
-        "price": "1638",
+        "name": "足金耳环",
+        "category": "耳环",
+        "weight": "1.617",
+        "material": "足金9999",
+        "price": "2910",
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
