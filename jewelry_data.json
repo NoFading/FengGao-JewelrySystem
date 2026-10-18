@@ -27811,5 +27811,16 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "261018001",
+        "name": "足金项链",
+        "category": "项链",
+        "weight": "2.281",
+        "material": "足金999",
+        "price": "4105",
+        "fee": "0",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
