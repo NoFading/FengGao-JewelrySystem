@@ -27904,5 +27904,60 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "261023001",
+        "name": "足金手镯",
+        "category": "手镯",
+        "weight": "30.89",
+        "material": "AU9999",
+        "price": "55602",
+        "fee": "88",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "261023002",
+        "name": "足金手镯",
+        "category": "手镯",
+        "weight": "28.84",
+        "material": "AU9999",
+        "price": "51912",
+        "fee": "88",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "261023003",
+        "name": "足金戒指",
+        "category": "戒指",
+        "weight": "8.626",
+        "material": "AU9999",
+        "price": "15526",
+        "fee": "88",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "261023004",
+        "name": "足金戒指",
+        "category": "戒指",
+        "weight": "6.83",
+        "material": "AU9999",
+        "price": "12294",
+        "fee": "88",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "261023005",
+        "name": "足金手链",
+        "category": "手链",
+        "weight": "7.09",
+        "material": "AU9999",
+        "price": "12762",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
