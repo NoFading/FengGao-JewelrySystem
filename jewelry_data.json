@@ -28069,5 +28069,16 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "261001DZ009",
+        "name": "足金吊坠",
+        "category": "吊坠",
+        "weight": "5.354",
+        "material": "足金999",
+        "price": "9637",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
