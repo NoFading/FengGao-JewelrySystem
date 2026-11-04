@@ -28237,5 +28237,27 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "261103001SL",
+        "name": "足金手链",
+        "category": "手链",
+        "weight": "15.49",
+        "material": "AU9999",
+        "price": "27882",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "261103002EH",
+        "name": "足金耳环",
+        "category": "耳环",
+        "weight": "2.656",
+        "material": "AU9999",
+        "price": "4780",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
