@@ -53,6 +53,8 @@ interface StocktakeReport {
   total_missing: number;
   missing_details: JewelryItem[];
 }
+ 
+const STOCKTAKE_STORAGE_KEY = 'township_jewelry_stocktake_session';
 
 export default function App() {
   // Authentication State
@@ -110,10 +112,113 @@ export default function App() {
   const [stocktakeActive, setStocktakeActive] = useState(false);
   const [localStocktakeItems, setLocalStocktakeItems] = useState<StocktakeItem[]>([]);
   const localStocktakeItemsRef = useRef<StocktakeItem[]>([]);
-  
+  const [pendingStocktakePrompt, setPendingStocktakePrompt] = useState<{
+    items: StocktakeItem[];
+    scannedCount: number;
+    totalCount: number;
+    savedAt?: string;
+  } | null>(null);
+
+  const restoreStocktakeSession = (items: StocktakeItem[]) => {
+    setLocalStocktakeItems(items);
+    setStocktakeActive(true);
+    setActiveOpTab('stocktake');
+    setPendingStocktakePrompt(null);
+    setStocktakeToast({
+      text: '🔄 盘点进度已成功恢复',
+      sub: `已恢复 ${items.filter(i => i.scanned).length} 件已盘记录，可继续扫码`,
+      type: 'success'
+    });
+  };
+
+  const discardStocktakeSession = () => {
+    localStorage.removeItem(STOCKTAKE_STORAGE_KEY);
+    setPendingStocktakePrompt(null);
+  };
+
+  // Synchronize localStocktakeItems changes to localStorage in real-time
   useEffect(() => {
     localStocktakeItemsRef.current = localStocktakeItems;
-  }, [localStocktakeItems]);
+    if (stocktakeActive && localStocktakeItems.length > 0) {
+      try {
+        localStorage.setItem(STOCKTAKE_STORAGE_KEY, JSON.stringify({
+          items: localStocktakeItems,
+          savedAt: new Date().toISOString()
+        }));
+      } catch (err) {
+        console.error('Failed to sync stocktake to localStorage', err);
+      }
+    }
+  }, [localStocktakeItems, stocktakeActive]);
+
+  // Anti-accidental page unload warning when stocktake is actively underway
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (stocktakeActive && localStocktakeItems.some(i => i.scanned)) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [stocktakeActive, localStocktakeItems]);
+
+  // On mount: check for unfinished stocktake session in localStorage and ask user
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const savedRaw = localStorage.getItem(STOCKTAKE_STORAGE_KEY);
+        if (savedRaw) {
+          const parsed = JSON.parse(savedRaw);
+          const items: StocktakeItem[] = Array.isArray(parsed) ? parsed : parsed?.items;
+          if (items && Array.isArray(items) && items.length > 0) {
+            const scannedCount = items.filter(i => i.scanned).length;
+            const totalCount = items.length;
+            const timeStr = parsed?.savedAt 
+              ? new Date(parsed.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '';
+
+            const sessionData = {
+              items,
+              scannedCount,
+              totalCount,
+              savedAt: parsed?.savedAt
+            };
+
+            let askedViaConfirm = false;
+            try {
+              const confirmMsg = `📋 检测到您上次有未完成的盘点数据${timeStr ? `（保存于 ${timeStr}）` : ''}：\n` +
+                `已核对：${scannedCount} 件 / 共 ${totalCount} 件在售商品。\n\n` +
+                `是否需要恢复上次的盘点进度？\n` +
+                `【确定】恢复进度继续盘点\n` +
+                `【取消】放弃并重新开始`;
+              const choice = window.confirm(confirmMsg);
+              askedViaConfirm = true;
+              if (choice) {
+                restoreStocktakeSession(items);
+                return;
+              } else {
+                discardStocktakeSession();
+                return;
+              }
+            } catch (e) {
+              // In case window.confirm is restricted by environment (iframe sandbox)
+            }
+
+            if (!askedViaConfirm) {
+              setPendingStocktakePrompt(sessionData);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to inspect saved stocktake session:', e);
+        localStorage.removeItem(STOCKTAKE_STORAGE_KEY);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const [stocktakeToast, setStocktakeToast] = useState<{ text: string; sub: string; type: 'success' | 'warn' | 'info' } | null>(null);
 
@@ -763,6 +868,8 @@ export default function App() {
       const data = await res.json();
       alert(data.msg);
       setStocktakeActive(false);
+      setLocalStocktakeItems([]);
+      localStorage.removeItem(STOCKTAKE_STORAGE_KEY);
       loadAllData();
       if (activeViewTab === 'stocktakeHistory') {
         loadStocktakeHistory();
@@ -776,6 +883,7 @@ export default function App() {
     if (window.confirm("确定放弃本次盘点吗？已扫码标记的数据将会丢失。")) {
       setStocktakeActive(false);
       setLocalStocktakeItems([]);
+      localStorage.removeItem(STOCKTAKE_STORAGE_KEY);
     }
   };
 
@@ -1654,13 +1762,59 @@ export default function App() {
           {activeOpTab === 'stocktake' && (
             <div id="contentOp3" className="space-y-3">
               {!stocktakeActive ? (
-                <div id="stocktakeSetup" className="py-2.5">
+                <div id="stocktakeSetup" className="py-2.5 space-y-3">
+                  {/* Cached unfinished stocktake alert banner if exists */}
+                  {(() => {
+                    try {
+                      const cached = localStorage.getItem(STOCKTAKE_STORAGE_KEY);
+                      if (!cached) return null;
+                      const parsed = JSON.parse(cached);
+                      const items: StocktakeItem[] = Array.isArray(parsed) ? parsed : parsed?.items;
+                      if (!items || items.length === 0) return null;
+                      const scanned = items.filter(i => i.scanned).length;
+                      return (
+                        <div className="bg-purple-50/90 border border-purple-200 rounded-2xl p-3.5 text-xs space-y-2.5 shadow-sm animate-fadeIn">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-purple-900 flex items-center gap-1.5 text-xs">
+                              <span className="text-base">🔄</span>
+                              <span>检测到上次未完成的盘点进度</span>
+                            </span>
+                            <span className="bg-purple-200/80 text-purple-900 font-extrabold px-2 py-0.5 rounded-lg text-[11px]">
+                              已核对 {scanned} / {items.length} 件
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-purple-700 leading-relaxed font-medium">
+                            上次盘点数据已保存在您的本地设备中{parsed?.savedAt ? `（${new Date(parsed.savedAt).toLocaleTimeString()}）` : ''}，关闭浏览器未丢失。您可以随时一键恢复，接着上次继续扫码！
+                          </p>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => restoreStocktakeSession(items)}
+                              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl text-xs shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                            >
+                              <span>▶️ 恢复上次盘点进度</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={discardStocktakeSession}
+                              className="px-3 bg-white hover:bg-slate-100 text-slate-500 border border-slate-200 font-semibold py-2 rounded-xl text-xs active:scale-95 transition-all"
+                            >
+                              放弃草稿
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    } catch (e) {
+                      return null;
+                    }
+                  })()}
+
                   <button 
                     onClick={startLocalStocktake}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm py-2.5 rounded-xl shadow-md shadow-purple-600/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                   >
                     <ClipboardCheck className="w-4 h-4" />
-                    <span>🟢 开启手机离线盘点</span>
+                    <span>🟢 开启全新离线盘点</span>
                   </button>
                 </div>
               ) : (
@@ -2420,6 +2574,51 @@ export default function App() {
             >
               关闭窗口
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Dialog for Restoring Previous Stocktake Session */}
+      {pendingStocktakePrompt && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-4 border border-purple-100 shadow-2xl space-y-3.5">
+            <div className="flex items-center gap-2 border-l-4 border-purple-600 pl-2">
+              <ClipboardCheck className="w-5 h-5 text-purple-600" />
+              <h3 className="text-sm font-bold text-slate-800">发现未完成的盘点进度</h3>
+            </div>
+            
+            <div className="bg-purple-50/70 border border-purple-100 rounded-xl p-3 text-xs space-y-1.5 text-purple-950">
+              <div className="flex justify-between font-bold">
+                <span>已核对件数：</span>
+                <span className="text-purple-700 font-extrabold">{pendingStocktakePrompt.scannedCount} / {pendingStocktakePrompt.totalCount} 件</span>
+              </div>
+              {pendingStocktakePrompt.savedAt && (
+                <div className="flex justify-between text-slate-500 text-[11px]">
+                  <span>保存时间：</span>
+                  <span>{new Date(pendingStocktakePrompt.savedAt).toLocaleString()}</span>
+                </div>
+              )}
+              <p className="text-[11px] text-purple-800/80 pt-1 border-t border-purple-100/60 leading-relaxed">
+                检测到您上次在浏览器中进行的盘点尚未提交。是否需要恢复上次的盘点进度，继续核对？
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => restoreStocktakeSession(pendingStocktakePrompt.items)}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl text-xs shadow-md shadow-purple-600/10 active:scale-95 transition-all flex items-center justify-center gap-1"
+              >
+                <span>🔄 恢复上次进度</span>
+              </button>
+              <button
+                type="button"
+                onClick={discardStocktakeSession}
+                className="px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded-xl text-xs active:scale-95 transition-all"
+              >
+                放弃草稿
+              </button>
+            </div>
           </div>
         </div>
       )}
