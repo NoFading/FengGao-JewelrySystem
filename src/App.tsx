@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ShoppingBag, 
   FileSpreadsheet, 
@@ -19,7 +19,8 @@ import {
   Calculator,
   ArrowRightLeft,
   Download,
-  X
+  X,
+  Layers
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -48,6 +49,7 @@ interface StocktakeItem extends JewelryItem {
 interface StocktakeReport {
   timestamp: string;
   owner: string;
+  category_scope?: string;
   total_expected: number;
   total_found: number;
   total_missing: number;
@@ -112,7 +114,32 @@ export default function App() {
   const [stocktakeActive, setStocktakeActive] = useState(false);
   const [localStocktakeItems, setLocalStocktakeItems] = useState<StocktakeItem[]>([]);
   const localStocktakeItemsRef = useRef<StocktakeItem[]>([]);
+  const [selectedStocktakeCategory, setSelectedStocktakeCategory] = useState<string>('全部品类');
+  const [stocktakeCategoryScope, setStocktakeCategoryScope] = useState<string>('全部品类');
+
+  // Dynamic distinct categories extracted from active database inventory
+  const availableCategories = useMemo(() => {
+    const counts: Record<string, number> = {};
+    activeInventory.forEach(item => {
+      const cat = String(item.category || '未分类').trim() || '未分类';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return Object.keys(counts).sort().map(cat => ({
+      name: cat,
+      count: counts[cat]
+    }));
+  }, [activeInventory]);
+
+  const selectedCategoryCount = useMemo(() => {
+    if (selectedStocktakeCategory === '全部品类') {
+      return activeInventory.length;
+    }
+    const found = availableCategories.find(c => c.name === selectedStocktakeCategory);
+    return found ? found.count : 0;
+  }, [selectedStocktakeCategory, availableCategories, activeInventory.length]);
+
   const [pendingStocktakePrompt, setPendingStocktakePrompt] = useState<{
+    categoryScope?: string;
     items: StocktakeItem[];
     scannedCodes: string[];
     scannedCount: number;
@@ -120,7 +147,7 @@ export default function App() {
     savedAt?: string;
   } | null>(null);
 
-  const restoreStocktakeSession = (targetSession?: { items?: StocktakeItem[]; scannedCodes?: string[] }) => {
+  const restoreStocktakeSession = (targetSession?: { categoryScope?: string; items?: StocktakeItem[]; scannedCodes?: string[] }) => {
     let session = targetSession;
     if (!session) {
       try {
@@ -130,10 +157,22 @@ export default function App() {
     }
     if (!session) return;
 
+    const catScope = session.categoryScope || '全部品类';
+    setStocktakeCategoryScope(catScope);
+    setSelectedStocktakeCategory(catScope);
+
     const scannedCodes = session.scannedCodes || (session.items ? session.items.filter(i => i.scanned).map(i => String(i.code).trim().toUpperCase()) : []);
 
-    // Merge with current activeInventory if available, or fallback to saved items
-    const sourceList = activeInventory.length > 0 ? activeInventory : (session.items || []);
+    // Merge with current activeInventory if available (filtered by categoryScope), or fallback to saved items
+    let sourceList: JewelryItem[] = [];
+    if (activeInventory.length > 0) {
+      sourceList = catScope === '全部品类' 
+        ? activeInventory 
+        : activeInventory.filter(item => String(item.category || '').trim() === catScope);
+    }
+    if (sourceList.length === 0) {
+      sourceList = session.items || [];
+    }
 
     const mergedItems: StocktakeItem[] = sourceList.map(item => {
       const codeUpper = String(item.code).trim().toUpperCase();
@@ -151,7 +190,7 @@ export default function App() {
     const scannedCount = mergedItems.filter(i => i.scanned).length;
     setStocktakeToast({
       text: '🔄 盘点进度已成功恢复',
-      sub: `已成功载入 ${scannedCount} 件已盘记录，您可以继续扫码`,
+      sub: `【${catScope}】已成功载入 ${scannedCount} 件已盘记录，您可以继续扫码`,
       type: 'success'
     });
   };
@@ -173,6 +212,7 @@ export default function App() {
       try {
         const scannedCodes = localStocktakeItems.filter(i => i.scanned).map(i => String(i.code).trim().toUpperCase());
         localStorage.setItem(STOCKTAKE_STORAGE_KEY, JSON.stringify({
+          categoryScope: stocktakeCategoryScope,
           items: localStocktakeItems,
           scannedCodes,
           savedAt: new Date().toISOString()
@@ -181,7 +221,7 @@ export default function App() {
         console.error('Failed to sync stocktake to localStorage', err);
       }
     }
-  }, [localStocktakeItems, stocktakeActive]);
+  }, [localStocktakeItems, stocktakeActive, stocktakeCategoryScope]);
 
   // Anti-accidental page unload warning when stocktake is actively underway
   useEffect(() => {
@@ -212,6 +252,7 @@ export default function App() {
           const totalCount = items ? items.length : 0;
 
           setPendingStocktakePrompt({
+            categoryScope: parsed?.categoryScope || '全部品类',
             items: items || [],
             scannedCodes,
             scannedCount,
@@ -734,9 +775,16 @@ export default function App() {
   };
 
   // Stocktake Actions
-  const startLocalStocktake = (forceNew = false) => {
-    if (activeInventory.length === 0) {
-      alert("当前店内没有任何在售存货，无需开启盘点！");
+  const startLocalStocktake = (forceNew = false, categoryToAudit?: string) => {
+    const targetCategory = categoryToAudit || selectedStocktakeCategory || '全部品类';
+
+    let filteredInventory = activeInventory;
+    if (targetCategory !== '全部品类') {
+      filteredInventory = activeInventory.filter(item => String(item.category || '').trim() === targetCategory);
+    }
+
+    if (filteredInventory.length === 0) {
+      alert(`当前店内没有任何【${targetCategory}】在售存货，无需开启盘点！`);
       return;
     }
 
@@ -747,7 +795,8 @@ export default function App() {
           const parsed = JSON.parse(existingRaw);
           const scanned = (parsed?.scannedCodes?.length) || (parsed?.items?.filter((i: any) => i.scanned).length) || 0;
           if (scanned > 0) {
-            if (!window.confirm(`⚠️ 检测到您有未提交的盘点草稿（已核对 ${scanned} 件）！\n开启全新盘点将清除此旧草稿并重新开始，确认开启新盘点吗？`)) {
+            const oldScope = parsed?.categoryScope || '全部品类';
+            if (!window.confirm(`⚠️ 检测到您有未提交的【${oldScope}】盘点草稿（已核对 ${scanned} 件）！\n开启全新盘点将清除此旧草稿，确认开启【${targetCategory}】新盘点吗？`)) {
               return;
             }
           }
@@ -755,7 +804,8 @@ export default function App() {
       } catch (e) {}
     }
 
-    const items = activeInventory.map(item => ({
+    setStocktakeCategoryScope(targetCategory);
+    const items = filteredInventory.map(item => ({
       ...item,
       scanned: false
     }));
@@ -769,6 +819,7 @@ export default function App() {
     // Synchronously write initial stocktake session to localStorage
     try {
       localStorage.setItem(STOCKTAKE_STORAGE_KEY, JSON.stringify({
+        categoryScope: targetCategory,
         items,
         scannedCodes: [],
         savedAt: new Date().toISOString()
@@ -786,6 +837,17 @@ export default function App() {
     const foundIndex = currentItems.findIndex(item => String(item.code).trim().toUpperCase() === rawCode);
 
     if (foundIndex === -1) {
+      // Check if item belongs to another category in activeInventory
+      const otherItem = activeInventory.find(item => String(item.code).trim().toUpperCase() === rawCode);
+      if (otherItem) {
+        setStocktakeToast({
+          text: `⚠️ 品类不属于本次盘点`,
+          sub: `【${otherItem.name}】属【${otherItem.category}】，当前盘点【${stocktakeCategoryScope}】`,
+          type: 'warn'
+        });
+        alert(`⚠️ 提示: 条码【${rawCode}】属于【${otherItem.category}】（货名：${otherItem.name}）！\n当前正在针对【${stocktakeCategoryScope}】进行盘点，不属于本次盘点范围。`);
+        return;
+      }
       alert(`⚠️ 警告: 条码【${rawCode}】不属于您的店内在售库存！`);
       return;
     }
@@ -824,10 +886,11 @@ export default function App() {
     updated[foundIndex] = { ...matchedItem, scanned: true };
     setLocalStocktakeItems(updated);
 
-    // Synchronously write to localStorage immediately with scannedCodes
+    // Synchronously write to localStorage immediately with scannedCodes and categoryScope
     try {
       const scannedCodes = updated.filter(i => i.scanned).map(i => String(i.code).trim().toUpperCase());
       localStorage.setItem(STOCKTAKE_STORAGE_KEY, JSON.stringify({
+        categoryScope: stocktakeCategoryScope,
         items: updated,
         scannedCodes,
         savedAt: new Date().toISOString()
@@ -889,14 +952,17 @@ export default function App() {
     const foundCount = localStocktakeItems.filter(item => item.scanned).length;
     
     if (missing.length > 0) {
-      if (!window.confirm(`⚠️ 盘点发现账面缺失【${missing.length}】件货品！\n如果是因丢件、错帐，请点击“确定”保存该盘亏报告；\n若只是漏网了，可点“取消”之后继续扫码补抓。`)) {
+      if (!window.confirm(`⚠️ 【${stocktakeCategoryScope}】盘点发现账面缺失【${missing.length}】件货品！\n如果是因丢件、错帐，请点击“确定”保存该盘亏报告；\n若只是漏网了，可点“取消”之后继续扫码补抓。`)) {
         return;
       }
     } else {
-      alert('🎉 恭喜！全盘皆齐，无账面资产流失！');
+      alert(`🎉 恭喜！【${stocktakeCategoryScope}】全盘皆齐，无账面资产流失！`);
     }
 
-    const report = {
+    const report: StocktakeReport = {
+      timestamp: '',
+      owner: '',
+      category_scope: stocktakeCategoryScope,
       total_expected: localStocktakeItems.length,
       total_found: foundCount,
       total_missing: missing.length,
@@ -924,7 +990,7 @@ export default function App() {
   };
 
   const cancelStocktakeReset = () => {
-    if (window.confirm("确定放弃本次盘点吗？已扫码标记的数据将会丢失。")) {
+    if (window.confirm(`确定放弃本次【${stocktakeCategoryScope}】盘点吗？已扫码标记的数据将会丢失。`)) {
       setStocktakeActive(false);
       setLocalStocktakeItems([]);
       localStorage.removeItem(STOCKTAKE_STORAGE_KEY);
@@ -1816,19 +1882,20 @@ export default function App() {
                       const items: StocktakeItem[] = Array.isArray(parsed) ? parsed : parsed?.items;
                       if (!items || items.length === 0) return null;
                       const scanned = items.filter(i => i.scanned).length;
+                      const scope = parsed?.categoryScope || '全部品类';
                       return (
                         <div className="bg-purple-50/90 border border-purple-200 rounded-2xl p-3.5 text-xs space-y-2.5 shadow-sm animate-fadeIn">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-purple-900 flex items-center gap-1.5 text-xs">
                               <span className="text-base">🔄</span>
-                              <span>检测到上次未完成的盘点进度</span>
+                              <span>未完成的【{scope}】盘点草稿</span>
                             </span>
                             <span className="bg-purple-200/80 text-purple-900 font-extrabold px-2 py-0.5 rounded-lg text-[11px]">
                               已核对 {scanned} / {items.length} 件
                             </span>
                           </div>
                           <p className="text-[11px] text-purple-700 leading-relaxed font-medium">
-                            上次盘点数据已保存在您的本地设备中{parsed?.savedAt ? `（${new Date(parsed.savedAt).toLocaleTimeString()}）` : ''}，关闭浏览器未丢失。您可以随时一键恢复，接着上次继续扫码！
+                            上次【{scope}】盘点已保存在本机设备中{parsed?.savedAt ? `（${new Date(parsed.savedAt).toLocaleTimeString()}）` : ''}，关闭浏览器未丢失。
                           </p>
                           <div className="flex gap-2 pt-1">
                             <button
@@ -1836,7 +1903,7 @@ export default function App() {
                               onClick={() => restoreStocktakeSession(parsed)}
                               className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl text-xs shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
                             >
-                              <span>▶️ 恢复上次盘点进度</span>
+                              <span>▶️ 恢复【{scope}】继续盘点</span>
                             </button>
                             <button
                               type="button"
@@ -1853,20 +1920,94 @@ export default function App() {
                     }
                   })()}
 
-                  <button 
-                    onClick={() => startLocalStocktake(false)}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm py-2.5 rounded-xl shadow-md shadow-purple-600/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <ClipboardCheck className="w-4 h-4" />
-                    <span>🟢 开启全新离线盘点</span>
-                  </button>
+                  {/* Category Selection Card */}
+                  <div className="bg-white border border-purple-100/90 rounded-2xl p-3.5 space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-purple-50 pb-2">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-purple-600" />
+                        <span>选择盘点品类范围</span>
+                      </label>
+                      <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-lg">
+                        共 {availableCategories.length} 个库中品类
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 leading-normal">
+                      💡 您可以按单一品类进行精细化轮盘，避免单次全库盘点工作量过大：
+                    </p>
+
+                    {/* Quick Category Buttons / Pills */}
+                    <div className="flex flex-wrap gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100 max-h-40 overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStocktakeCategory('全部品类')}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5 ${
+                          selectedStocktakeCategory === '全部品类'
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-white text-slate-600 hover:bg-purple-50 border border-slate-200'
+                        }`}
+                      >
+                        <span>🌐 全部品类</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${selectedStocktakeCategory === '全部品类' ? 'bg-purple-700 text-purple-100' : 'bg-slate-100 text-slate-500'}`}>
+                          {activeInventory.length}件
+                        </span>
+                      </button>
+
+                      {availableCategories.map(cat => {
+                        const isSelected = selectedStocktakeCategory === cat.name;
+                        return (
+                          <button
+                            key={cat.name}
+                            type="button"
+                            onClick={() => setSelectedStocktakeCategory(cat.name)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-purple-600 text-white shadow-xs'
+                                : 'bg-white text-slate-700 hover:bg-purple-50 border border-slate-200'
+                            }`}
+                          >
+                            <span>{cat.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${isSelected ? 'bg-purple-700 text-purple-100' : 'bg-slate-100 text-slate-500'}`}>
+                              {cat.count}件
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Selected Summary Info */}
+                    <div className="bg-purple-50/70 border border-purple-100 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                      <span className="font-medium text-slate-600">
+                        当前选中：<strong className="text-purple-700 font-extrabold text-[13px]">【{selectedStocktakeCategory}】</strong>
+                      </span>
+                      <span className="bg-white px-2.5 py-0.5 rounded-lg border border-purple-200 text-purple-900 font-extrabold text-xs shadow-2xs font-mono">
+                        共 {selectedCategoryCount} 件待核对
+                      </span>
+                    </div>
+
+                    {/* Start Stocktake Button */}
+                    <button 
+                      type="button"
+                      onClick={() => startLocalStocktake(false, selectedStocktakeCategory)}
+                      disabled={selectedCategoryCount === 0}
+                      className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-sm py-2.5 rounded-xl shadow-md shadow-purple-600/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <ClipboardCheck className="w-4 h-4" />
+                      <span>🟢 开启【{selectedStocktakeCategory}】离线盘点 ({selectedCategoryCount}件)</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div id="stocktakeActiveZone" className="space-y-3 animate-fadeIn">
                   <div className="bg-purple-50/80 border border-purple-100 rounded-xl p-3 flex justify-between items-center select-none text-xs">
-                    <span className="font-bold text-purple-800">📊 盘点进度：</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-purple-800">📊 盘点进度：</span>
+                      <span className="bg-purple-200/80 text-purple-950 font-extrabold px-2 py-0.5 rounded-md text-[10px]">
+                        品类: {stocktakeCategoryScope}
+                      </span>
+                    </div>
                     <span className="text-sm font-extrabold text-purple-700" id="stProgressText">
-                      {localStocktakeItems.filter(i => i.scanned).length} 已盘 / {localStocktakeItems.length} 总在售数
+                      {localStocktakeItems.filter(i => i.scanned).length} 已盘 / {localStocktakeItems.length} 在售
                     </span>
                   </div>
 
@@ -1875,7 +2016,7 @@ export default function App() {
                     className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm text-white transition-all active:scale-95 ${scannerActive && activeScannerType === 'stocktake' ? 'bg-purple-700' : 'bg-purple-600 hover:bg-purple-700'}`}
                   >
                     <Camera className="w-4 h-4" />
-                    <span>{scannerActive && activeScannerType === 'stocktake' ? '📷 关闭摄像头盘点' : '📷 开启盘点专用扫码'}</span>
+                    <span>{scannerActive && activeScannerType === 'stocktake' ? '📷 关闭摄像头盘点' : `📷 开启【${stocktakeCategoryScope}】专用扫码`}</span>
                   </button>
 
                   <div id="stocktakeReader" className="w-full max-w-sm mx-auto overflow-hidden rounded-xl bg-black" style={{ display: scannerActive && activeScannerType === 'stocktake' ? 'block' : 'none' }}></div>
@@ -1900,7 +2041,7 @@ export default function App() {
                   {/* Missing items display area */}
                   <div className="border border-purple-100 rounded-xl p-2.5 bg-white space-y-2.5">
                     <div className="flex items-center justify-between border-b border-purple-50 pb-2">
-                      <span className="text-xs font-bold text-amber-700">缺失警报 ({stocktakeMissingCount}件未核对)</span>
+                      <span className="text-xs font-bold text-amber-700">【{stocktakeCategoryScope}】缺失警报 ({stocktakeMissingCount}件未核对)</span>
                       <input 
                         type="text" 
                         value={stocktakeSearch}
@@ -2520,6 +2661,7 @@ export default function App() {
                   <thead>
                     <tr className="bg-slate-50 text-slate-600 border-b border-slate-105">
                       <th className="p-2.5 font-bold">盘点时间</th>
+                      <th className="p-2.5 font-bold">盘点品类</th>
                       <th className="p-2.5 font-bold">账面应有</th>
                       <th className="p-2.5 font-bold">实盘抓到</th>
                       <th className="p-2.5 font-bold text-rose-600">盘亏件数</th>
@@ -2529,7 +2671,7 @@ export default function App() {
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {stocktakeHistory.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-slate-400">
+                        <td colSpan={6} className="p-4 text-center text-slate-400">
                           暂无任何上传的历史盘点报告
                         </td>
                       </tr>
@@ -2537,6 +2679,11 @@ export default function App() {
                       [...stocktakeHistory].reverse().map((report, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/50">
                           <td className="p-2.5 text-slate-500 font-bold select-text">{report.timestamp}</td>
+                          <td className="p-2.5">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                              {report.category_scope || '全部品类'}
+                            </span>
+                          </td>
                           <td className="p-2.5 text-slate-700">{report.total_expected} 件</td>
                           <td className="p-2.5 text-slate-700">{report.total_found} 件</td>
                           <td className={`p-2.5 font-bold ${report.total_missing > 0 ? 'text-rose-600 font-extrabold' : 'text-emerald-600'}`}>
@@ -2582,7 +2729,7 @@ export default function App() {
             </div>
 
             <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-              账单时间: {selectedReport.timestamp} • 账面盈缺: 缺失 {selectedReport.total_missing} 件
+              时间: {selectedReport.timestamp} • 范围: {selectedReport.category_scope || '全部品类'} • 缺失 {selectedReport.total_missing} 件
             </p>
 
             <div className="overflow-x-auto max-h-56 border border-slate-100 rounded-xl select-text">
@@ -2633,6 +2780,12 @@ export default function App() {
             
             <div className="bg-purple-50/70 border border-purple-100 rounded-xl p-3 text-xs space-y-1.5 text-purple-950">
               <div className="flex justify-between font-bold">
+                <span>盘点品类：</span>
+                <span className="bg-purple-200/80 text-purple-950 px-2 py-0.5 rounded-md text-[11px] font-extrabold">
+                  {pendingStocktakePrompt.categoryScope || '全部品类'}
+                </span>
+              </div>
+              <div className="flex justify-between font-bold">
                 <span>已核对件数：</span>
                 <span className="text-purple-700 font-extrabold">{pendingStocktakePrompt.scannedCount} / {pendingStocktakePrompt.totalCount} 件</span>
               </div>
@@ -2643,7 +2796,7 @@ export default function App() {
                 </div>
               )}
               <p className="text-[11px] text-purple-800/80 pt-1 border-t border-purple-100/60 leading-relaxed">
-                检测到您上次在浏览器中进行的盘点尚未提交。是否需要恢复上次的盘点进度，继续核对？
+                检测到您上次在浏览器中进行的【{pendingStocktakePrompt.categoryScope || '全部品类'}】盘点尚未提交。是否需要恢复上次进度，继续核对？
               </p>
             </div>
 
