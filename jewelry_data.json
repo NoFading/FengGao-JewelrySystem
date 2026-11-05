@@ -15089,9 +15089,11 @@
         "weight": "1.835",
         "price": "3303",
         "fee": "120",
-        "status": "在售",
+        "status": "已售出",
         "owner": "fenggao",
-        "material": "AU750"
+        "material": "AU750",
+        "sold_date": "2026-11-05 15:36:02",
+        "sold_price": "3303"
     },
     {
         "code": "260707130",
