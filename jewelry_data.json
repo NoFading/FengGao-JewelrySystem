@@ -28290,5 +28290,16 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260920004SZ",
+        "name": "足金手镯",
+        "category": "手镯",
+        "weight": "8.86",
+        "material": "足金9999",
+        "price": "15948",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
