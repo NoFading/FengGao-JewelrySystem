@@ -25481,10 +25481,8 @@
         "material": "AU9999",
         "price": "2653",
         "fee": "120",
-        "status": "已售出",
-        "owner": "fenggao",
-        "sold_date": "2026-11-09 16:47:51",
-        "sold_price": "0"
+        "status": "在售",
+        "owner": "fenggao"
     },
     {
         "code": "260824002435",
@@ -27754,8 +27752,10 @@
         "material": "足金999",
         "price": "5704",
         "fee": "120",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-11-09 16:48:10",
+        "sold_price": "0"
     },
     {
         "code": "261001JZ003",
