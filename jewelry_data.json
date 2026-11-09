@@ -7404,9 +7404,11 @@
         "weight": "3.746",
         "price": "6743",
         "fee": "120",
-        "status": "在售",
+        "status": "已售出",
         "owner": "fenggao",
-        "material": "AU9999"
+        "material": "AU9999",
+        "sold_date": "2026-11-09 16:46:02",
+        "sold_price": "0"
     },
     {
         "code": "260707678",
