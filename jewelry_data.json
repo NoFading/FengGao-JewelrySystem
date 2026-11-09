@@ -28402,5 +28402,16 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260911006JZ",
+        "name": "足金戒指",
+        "category": "黄金",
+        "weight": "0.954",
+        "material": "足金999",
+        "price": "1717",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
