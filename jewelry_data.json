@@ -28301,5 +28301,16 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "261001SZ002",
+        "name": "足金手镯",
+        "category": "手镯",
+        "weight": "28.71",
+        "material": "足金999",
+        "price": "51678",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
