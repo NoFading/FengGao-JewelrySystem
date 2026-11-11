@@ -28024,8 +28024,10 @@
         "material": "足金999",
         "price": "4105",
         "fee": "0",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-11-11 15:39:06",
+        "sold_price": "0"
     },
     {
         "code": "261013001EH",
