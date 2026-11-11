@@ -27425,10 +27425,8 @@
         "material": "AU9999",
         "price": "349",
         "fee": "120",
-        "status": "已售出",
-        "owner": "fenggao",
-        "sold_date": "2026-11-11 11:26:50",
-        "sold_price": "0"
+        "status": "在售",
+        "owner": "fenggao"
     },
     {
         "code": "260910009935",
@@ -27438,8 +27436,10 @@
         "material": "AU9999",
         "price": "526",
         "fee": "120",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-11-11 11:27:05",
+        "sold_price": "0"
     },
     {
         "code": "260921023735",
