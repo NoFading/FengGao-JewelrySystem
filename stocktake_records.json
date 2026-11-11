@@ -5274,5 +5274,87 @@
                 "scanned": false
             }
         ]
+    },
+    {
+        "timestamp": "2026-11-11 14:15:41",
+        "owner": "fenggao",
+        "category_scope": "挂坠",
+        "total_expected": 134,
+        "total_found": 128,
+        "total_missing": 6,
+        "missing_details": [
+            {
+                "code": "260719002",
+                "name": "足金金钞",
+                "category": "挂坠",
+                "weight": "1.2",
+                "price": "2160",
+                "fee": "120",
+                "status": "在售",
+                "owner": "fenggao",
+                "material": "AU9999",
+                "scanned": false
+            },
+            {
+                "code": "260719003",
+                "name": "足金金钞",
+                "category": "挂坠",
+                "weight": "1.2",
+                "price": "2160",
+                "fee": "120",
+                "status": "在售",
+                "owner": "fenggao",
+                "material": "AU9999",
+                "scanned": false
+            },
+            {
+                "code": "260719004",
+                "name": "足金金钞",
+                "category": "挂坠",
+                "weight": "2",
+                "price": "3600",
+                "fee": "120",
+                "status": "在售",
+                "owner": "fenggao",
+                "material": "AU9999",
+                "scanned": false
+            },
+            {
+                "code": "260719005",
+                "name": "足金金钞",
+                "category": "挂坠",
+                "weight": "1.2",
+                "price": "2160",
+                "fee": "120",
+                "status": "在售",
+                "owner": "fenggao",
+                "material": "AU9999",
+                "scanned": false
+            },
+            {
+                "code": "260719006",
+                "name": "足金金钞",
+                "category": "挂坠",
+                "weight": "1.2",
+                "price": "2160",
+                "fee": "120",
+                "status": "在售",
+                "owner": "fenggao",
+                "material": "AU9999",
+                "scanned": false
+            },
+            {
+                "code": "260719007",
+                "name": "足金金钞",
+                "category": "挂坠",
+                "weight": "1",
+                "price": "1800",
+                "fee": "120",
+                "status": "在售",
+                "owner": "fenggao",
+                "material": "AU9999",
+                "scanned": false
+            }
+        ]
     }
 ]
