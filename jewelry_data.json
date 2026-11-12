@@ -28905,5 +28905,16 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "260911002SC",
+        "name": "足金手链",
+        "category": "手链",
+        "weight": "17.853",
+        "material": "足金999",
+        "price": "32135",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
