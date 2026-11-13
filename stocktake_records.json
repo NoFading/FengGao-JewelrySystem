@@ -6324,5 +6324,14 @@
                 "scanned": false
             }
         ]
+    },
+    {
+        "timestamp": "2026-11-13 11:12:34",
+        "owner": "fenggao",
+        "category_scope": "转运珠",
+        "total_expected": 505,
+        "total_found": 505,
+        "total_missing": 0,
+        "missing_details": []
     }
 ]
