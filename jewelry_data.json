@@ -27170,8 +27170,10 @@
         "material": "AU9999",
         "price": "108",
         "fee": "120",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-11-13 11:03:52",
+        "sold_price": "0"
     },
     {
         "code": "260912022ZYZ",
