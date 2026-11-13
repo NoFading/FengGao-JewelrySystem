@@ -6242,5 +6242,87 @@
                 "scanned": false
             }
         ]
+    },
+    {
+        "timestamp": "2026-11-13 10:30:18",
+        "owner": "fenggao",
+        "category_scope": "手串",
+        "total_expected": 6,
+        "total_found": 0,
+        "total_missing": 6,
+        "missing_details": [
+            {
+                "code": "260901YSC058",
+                "name": "玉手串",
+                "category": "手串",
+                "weight": "0",
+                "material": "玉",
+                "price": "1820",
+                "fee": "0",
+                "status": "在售",
+                "owner": "fenggao",
+                "scanned": false
+            },
+            {
+                "code": "260901YSC059",
+                "name": "玉手串",
+                "category": "手串",
+                "weight": "0",
+                "material": "玉",
+                "price": "1380",
+                "fee": "0",
+                "status": "在售",
+                "owner": "fenggao",
+                "scanned": false
+            },
+            {
+                "code": "260901YSC060",
+                "name": "玉手串",
+                "category": "手串",
+                "weight": "0",
+                "material": "玉",
+                "price": "1280",
+                "fee": "0",
+                "status": "在售",
+                "owner": "fenggao",
+                "scanned": false
+            },
+            {
+                "code": "260901YSC061",
+                "name": "银手串",
+                "category": "手串",
+                "weight": "0",
+                "material": "S999",
+                "price": "594",
+                "fee": "0",
+                "status": "在售",
+                "owner": "fenggao",
+                "scanned": false
+            },
+            {
+                "code": "260901YSC062",
+                "name": "银手串",
+                "category": "手串",
+                "weight": "0",
+                "material": "S999",
+                "price": "504",
+                "fee": "0",
+                "status": "在售",
+                "owner": "fenggao",
+                "scanned": false
+            },
+            {
+                "code": "260901YSC063",
+                "name": "银手串",
+                "category": "手串",
+                "weight": "0",
+                "material": "S999",
+                "price": "221",
+                "fee": "0",
+                "status": "在售",
+                "owner": "fenggao",
+                "scanned": false
+            }
+        ]
     }
 ]
