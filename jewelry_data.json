@@ -27894,8 +27894,10 @@
         "material": "足金999",
         "price": "9849",
         "fee": "120",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-11-15 17:34:40",
+        "sold_price": "9849"
     },
     {
         "code": "260917007935",
