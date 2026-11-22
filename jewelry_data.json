@@ -29237,5 +29237,16 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "261115001",
+        "name": "AU916戒指",
+        "category": "戒指",
+        "weight": "3.904",
+        "material": "AU916",
+        "price": "7027",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
