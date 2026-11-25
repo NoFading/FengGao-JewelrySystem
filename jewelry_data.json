@@ -28620,8 +28620,10 @@
         "material": "足金999",
         "price": "51678",
         "fee": "120",
-        "status": "在售",
-        "owner": "fenggao"
+        "status": "已售出",
+        "owner": "fenggao",
+        "sold_date": "2026-11-25 10:18:57",
+        "sold_price": "3680"
     },
     {
         "code": "260930001JZ",
