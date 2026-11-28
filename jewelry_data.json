@@ -29366,5 +29366,27 @@
         "fee": "120",
         "status": "在售",
         "owner": "fenggao"
+    },
+    {
+        "code": "261128009",
+        "name": "足金戒指",
+        "category": "戒指",
+        "weight": "8.82",
+        "material": "AU9999",
+        "price": "19955",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
+    },
+    {
+        "code": "261128010",
+        "name": "足金戒指",
+        "category": "戒指",
+        "weight": "8.94",
+        "material": "AU9999",
+        "price": "19591",
+        "fee": "120",
+        "status": "在售",
+        "owner": "fenggao"
     }
 ]
